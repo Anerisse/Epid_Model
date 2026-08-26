@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.1.2 Chrome/138.0.7204.243 Electron/37.4.0 Safari/537.36" version="28.1.2">
   <diagram name="Страница — 1" id="cpUsIjNLFmoZWQdYP4Bx">
-    <mxGraphModel dx="1426" dy="841" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1678" dy="989" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -49,7 +49,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="YYOwn0VAyytf_ufYoesK-1" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Верификаци и параметризация математических моделей эпидемий&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontFamily=Georgia;horizontal=1;points=[[0,0,0,0,0],[0,0.25,0,0,0],[0,0.5,0,0,0],[0,0.75,0,0,0],[0,1,0,0,0],[0.13,0,0,0,0],[0.25,0,0,0,0],[0.25,1,0,0,0],[0.38,0,0,0,0],[0.5,0,0,0,0],[0.5,1,0,0,0],[0.63,0,0,0,0],[0.75,0,0,0,0],[0.75,1,0,0,0],[0.88,0,0,0,0],[1,0,0,0,0],[1,0.25,0,0,0],[1,0.5,0,0,0],[1,0.75,0,0,0],[1,1,0,0,0]];" parent="1" vertex="1">
+        <mxCell id="YYOwn0VAyytf_ufYoesK-1" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Верификаци и параметрификация математических моделей эпидемий&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;fontFamily=Georgia;horizontal=1;points=[[0,0,0,0,0],[0,0.25,0,0,0],[0,0.5,0,0,0],[0,0.75,0,0,0],[0,1,0,0,0],[0.13,0,0,0,0],[0.25,0,0,0,0],[0.25,1,0,0,0],[0.38,0,0,0,0],[0.5,0,0,0,0],[0.5,1,0,0,0],[0.63,0,0,0,0],[0.75,0,0,0,0],[0.75,1,0,0,0],[0.88,0,0,0,0],[1,0,0,0,0],[1,0.25,0,0,0],[1,0.5,0,0,0],[1,0.75,0,0,0],[1,1,0,0,0]];" parent="1" vertex="1">
           <mxGeometry x="320" y="300" width="310" height="160" as="geometry" />
         </mxCell>
         <mxCell id="YYOwn0VAyytf_ufYoesK-2" value="" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;fontSize=13;fontFamily=Georgia;horizontal=1;" parent="1" target="YYOwn0VAyytf_ufYoesK-1" edge="1">
@@ -269,12 +269,12 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-3" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Georgia&quot;&gt;Верифицированная&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Georgia&quot;&gt;&amp;nbsp;модель&lt;/font&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="YYOwn0VAyytf_ufYoesK-53" vertex="1" connectable="0">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-3" value="&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Georgia&quot;&gt;Верифицированная&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 14px;&quot; face=&quot;Georgia&quot;&gt;&amp;nbsp;модель&lt;/font&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="YYOwn0VAyytf_ufYoesK-53">
           <mxGeometry x="-0.189" y="-4" relative="1" as="geometry">
             <mxPoint x="9" y="-44" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-1" value="&lt;font face=&quot;Georgia&quot; style=&quot;font-size: 14px;&quot;&gt;&lt;br&gt;Формат &lt;br&gt;экспорта&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="endArrow=classic;html=1;rounded=0;entryX=0.88;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" target="YYOwn0VAyytf_ufYoesK-1" edge="1">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-1" value="&lt;font face=&quot;Georgia&quot; style=&quot;font-size: 14px;&quot;&gt;&lt;br&gt;Формат &lt;br&gt;экспорта&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="endArrow=classic;html=1;rounded=0;entryX=0.88;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="YYOwn0VAyytf_ufYoesK-1">
           <mxGeometry x="0.1453" y="8" width="50" height="50" relative="1" as="geometry">
             <mxPoint x="590" y="160" as="sourcePoint" />
             <mxPoint x="700" y="500" as="targetPoint" />
@@ -282,7 +282,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-2" value="&lt;font face=&quot;Georgia&quot; style=&quot;font-size: 14px;&quot;&gt;&lt;br&gt;Формат &lt;br&gt;экспорта&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="YYOwn0VAyytf_ufYoesK-51" edge="1">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-2" value="&lt;font face=&quot;Georgia&quot; style=&quot;font-size: 14px;&quot;&gt;&lt;br&gt;Формат &lt;br&gt;экспорта&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" target="YYOwn0VAyytf_ufYoesK-51">
           <mxGeometry x="0.1453" y="8" width="50" height="50" relative="1" as="geometry">
             <mxPoint x="1060" y="640" as="sourcePoint" />
             <mxPoint x="1193" y="830" as="targetPoint" />
@@ -290,24 +290,24 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-4" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;fontSize=13;fontFamily=Georgia;horizontal=1;" parent="1" edge="1">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-4" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;fontSize=13;fontFamily=Georgia;horizontal=1;" edge="1" parent="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="1120" y="940" as="sourcePoint" />
             <mxPoint x="1270" y="940" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-5" value="Верифицированная модель" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;fontFamily=Georgia;horizontal=1;" parent="_Cly7fNJIPUUW7U6kmDp-4" vertex="1" connectable="0">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-5" value="Верифицированная модель" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;fontFamily=Georgia;horizontal=1;" vertex="1" connectable="0" parent="_Cly7fNJIPUUW7U6kmDp-4">
           <mxGeometry x="-0.25" y="2" relative="1" as="geometry">
             <mxPoint x="44" y="-13" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-6" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;" parent="1" edge="1">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-6" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;" edge="1" parent="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="1120" y="970" as="sourcePoint" />
             <mxPoint x="1250" y="970" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="_Cly7fNJIPUUW7U6kmDp-7" value="Отчёт" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;fontFamily=Georgia;horizontal=1;" parent="_Cly7fNJIPUUW7U6kmDp-6" vertex="1" connectable="0">
+        <mxCell id="_Cly7fNJIPUUW7U6kmDp-7" value="Отчёт" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=14;fontFamily=Georgia;horizontal=1;" vertex="1" connectable="0" parent="_Cly7fNJIPUUW7U6kmDp-6">
           <mxGeometry x="-0.1538" y="3" relative="1" as="geometry">
             <mxPoint y="-7" as="offset" />
           </mxGeometry>
