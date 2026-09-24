@@ -114,19 +114,25 @@ test("неизвестный компартмент получает цвет и
 // ------------------------------------------------------------------
 // Ручное перенаправление потоков (fallback этапа 2)
 // ------------------------------------------------------------------
-test("redirectFlows применяет правило по совпадению источника и подписи", () => {
+test("redirectFlows по умолчанию не меняет потоки (правил нет)", () => {
   const flows = [
-    { from: "S", to: "E", label: "β*I/N" },
-    { from: "E", to: "I", label: "σ" },
-    { from: "S", to: null, label: "μ" },
+    { from: "S", to: "E", label: "β*I/N", drivers: ["I"] },
+    { from: "E", to: "I", label: "σ", drivers: [] },
+    { from: "S", to: null, label: "μ", drivers: [] },
   ];
-  const out = redirectFlows(flows);
-  // Заражение по правилу FLOW_REDIRECTS уходит из S сразу в I
+  // FLOW_REDIRECTS пуст: схема рисует потоки так, как вывел парсер
+  assert.deepEqual(redirectFlows(flows), flows);
+});
+
+test("redirectFlows применяет переданное правило по совпадению источника и подписи", () => {
+  const flows = [
+    { from: "S", to: "E", label: "β*I/N", drivers: ["I"] },
+    { from: "E", to: "I", label: "σ", drivers: [] },
+  ];
+  const out = redirectFlows(flows, [{ from: "S", label: "β*I/N", to: "I" }]);
+  // Правило перенаправляет только совпавший поток
   assert.strictEqual(out[0].to, "I");
-  assert.strictEqual(out[0].from, "S");
-  // Остальные потоки не затронуты
-  assert.strictEqual(out[1].to, "I");
-  assert.strictEqual(out[2].to, null);
+  assert.strictEqual(out[1].to, "I"); // без совпадения — без изменений
 });
 
 test("redirectFlows не трогает потоки, не совпавшие с правилами", () => {

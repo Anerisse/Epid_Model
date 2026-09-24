@@ -174,9 +174,16 @@ test("полный разбор SIR: переменные времени", () =>
 test("полный разбор SIR: потоки S→I и I→R с подписями «на единицу источника»", () => {
   const s = parseOdeSystem(SIR_TEXT);
   assert.deepEqual(s.flows, [
-    { from: "S", to: "I", label: "β*I/N" }, // β*S*I/N без множителя S
-    { from: "I", to: "R", label: "γ" },     // γ*I без множителя I
+    { from: "S", to: "I", label: "β*I/N", drivers: [] }, // β*S*I/N без множителя S
+    { from: "I", to: "R", label: "γ", drivers: [] },     // γ*I без множителя I
   ]);
+});
+
+test("полный разбор SIR: в термине β*S*I/N нет «движителей»", () => {
+  const s = parseOdeSystem(SIR_TEXT);
+  // В SIR источник S и цель I — оба компартмента слагаемого, I уже цель,
+  // поэтому дополнительных «движителей» нет
+  assert.deepEqual(s.flows[0].drivers, []);
 });
 
 test("SEIR: потоки и потери (to: null) с подписями «на единицу источника»", () => {
@@ -193,14 +200,27 @@ test("SEIR: потоки и потери (to: null) с подписями «на
     arr.slice().sort((a, b) => (a.from + "|" + a.to).localeCompare(b.from + "|" + b.to));
 
   assert.deepEqual(sortFlows(s.flows), sortFlows([
-    { from: "S", to: "E", label: "β*I/N" },  // заражение S → E
-    { from: "E", to: "I", label: "σ" },       // инкубация E → I
-    { from: "I", to: "R", label: "γ" },       // выздоровление I → R
-    { from: "S", to: null, label: "μ" },      // смертность — «в никуда»
-    { from: "E", to: null, label: "μ" },
-    { from: "I", to: null, label: "μ" },
-    { from: "R", to: null, label: "μ" },
+    { from: "S", to: "E", label: "β*I/N", drivers: ["I"] }, // люди S → E, скорость задаёт I
+    { from: "E", to: "I", label: "σ", drivers: [] },         // инкубация E → I
+    { from: "I", to: "R", label: "γ", drivers: [] },         // выздоровление I → R
+    { from: "S", to: null, label: "μ", drivers: [] },        // смертность — «в никуда»
+    { from: "E", to: null, label: "μ", drivers: [] },
+    { from: "I", to: null, label: "μ", drivers: [] },
+    { from: "R", to: null, label: "μ", drivers: [] },
   ]));
+});
+
+test("SEIR: поток S→E имеет «движителем» I (сила заражения)", () => {
+  const s = parseOdeSystem(
+    [
+      "dS/dt = -β*S*I/N - μ*S",
+      "dE/dt = β*S*I/N - σ*E - μ*E",
+      "dI/dt = σ*E - γ*I - μ*I",
+      "dR/dt = γ*I - μ*R",
+    ].join("\n")
+  );
+  const bean = s.flows.find((f) => f.from === "S" && f.to === "E");
+  assert.deepEqual(bean.drivers, ["I"]);
 });
 
 test("дубликат компартмента — ошибка", () => {

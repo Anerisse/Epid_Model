@@ -380,6 +380,11 @@ function updateParseInfo() {
     parts.push(`Потоки: ${transfers.map((f) => `${f.from} → ${f.to} (${f.label})`).join(", ")}`);
   if (losses.length)
     parts.push(`Потери: ${losses.map((f) => `${f.from} (${f.label})`).join(", ")}`);
+  // «Движители» потоков (например, I в β*S*I/N): они задают скорость
+  // перехода, но люди переходят из источника в цель
+  const drivers = transfers.flatMap((f) => f.drivers || []);
+  if (drivers.length)
+    parts.push(`Влияет: ${[...new Set(drivers)].join(", ")}`);
 
   info.textContent = parts.join(" · ");
   info.className = `${baseClass} text-emerald-400`;

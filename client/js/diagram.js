@@ -54,19 +54,20 @@ function compartmentColor(name, index) {
 // упрощённый вариант, до полноценной редактируемой таблицы потоков).
 // Правило применяется к потоку, если совпали и источник, и подпись,
 // — тогда целевой компартмент заменяется на указанный.
-// Пример курсовой: в системе SEIR слагаемое β*S*I/N входит в dE/dt
-// (поток S → E), но на схеме заражение рисуют сразу в I — стрелка
-// S → I с подписью β*I/N (классический вид).
+// По умолчанию список пуст: потоки рисуются так, как выведены из
+// уравнений. (Раньше здесь была правка S → I для SEIR — она
+// неверна: β*S*I/N входит в dE/dt, т.е. люди переходят S → E,
+// а роль I — скорость заражения. Она показывается пунктирной
+// дугой влияния от I к стрелке, см. drawInfectionEdges.)
 // ------------------------------------------------------------------
-const FLOW_REDIRECTS = [
-  { from: "S", label: "β*I/N", to: "I" },
-];
+const FLOW_REDIRECTS = [];
 
 // Применяет пользовательские перенаправления к списку потоков.
 // Потоки без подходящего правила возвращаются без изменений.
-function redirectFlows(flows) {
+// rules можно передать для тестов; по умолчанию — FLOW_REDIRECTS.
+function redirectFlows(flows, rules = FLOW_REDIRECTS) {
   return flows.map((f) => {
-    const rule = FLOW_REDIRECTS.find((r) => r.from === f.from && r.label === f.label);
+    const rule = rules.find((r) => r.from === f.from && r.label === f.label);
     return rule ? { ...f, to: rule.to } : f;
   });
 }
@@ -216,6 +217,11 @@ function updateDiagram() {
     }
   });
 
+  // Пунктирные дуги «силы заражения»: от компартментов-«движителей»
+  // (например, I в β*S*I/N) к стрелке потока. Люди переходят S → E,
+  // а I лишь задаёт скорость перехода — показываем это отдельно.
+  drawInfectionEdges(ctx, flows, boxes);
+
   order.forEach((name, index) => {
     drawBlock(ctx, boxes[name].x, boxes[name].y, name, compartmentColor(name, index), boxes[name].size);
   });
@@ -254,6 +260,10 @@ function updateDiagramCaptions(names, flows) {
         bits.push(transfers.map((f) => `${f.from} → ${f.to} (${f.label})`).join(" · "));
       if (losses.length)
         bits.push(`Потери: ${losses.map((f) => `${f.from} (${f.label})`).join(" · ")}`);
+      // «Движители» потоков (I в β*S*I/N) — их роль показывает пунктир
+      const drivers = transfers.flatMap((f) => f.drivers || []);
+      if (drivers.length)
+        bits.push(`Влияет: ${[...new Set(drivers)].join(" · ")}`);
       flowsLine.textContent = "Потоки: " + bits.join(" · ");
     }
   }
@@ -334,25 +344,58 @@ function drawBlock(ctx, x, y, symbol, color, size) {
 
 // ------------------------------------------------------------------
 // Рисует поток-стрелку между двумя блоками с подписью формулы.
-// Линия идёт от края блока-источника до края целевого блока;
-// если поток ведёт влево или по вертикали — изгибаем дугу вверх.
+// Линия идёт от края блока-источника до края целевого блока.
+// Если на пути (между ними по горизонтали, в том же ряду) есть
+// другой блок — стрелка огибает его дугой СВЕРХУ (например,
+// перенаправленный поток S → I, когда между ними стоит E).
+// boxes — карта всех блоков { имя: {x, y, size} }, нужна для
+// обнаружения препятствий.
 // ------------------------------------------------------------------
-function drawFlow(ctx, fromBox, toBox, label) {
-  const dx = toBox.x - fromBox.x;
-  const dy = toBox.y - fromBox.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist === 0) return; // самопетлю не рисуем (парсер их не выдаёт)
+function drawFlow(ctx, fromBox, toBox, label, boxes = null) {
+  // Есть ли чужой блок по пути: центр между источниками, тот же ряд
+  let bypass = false;
+  if (boxes) {
+    Object.values(boxes).forEach((b) => {
+      if (b === fromBox || b === toBox) return;
+      const between = (b.x - fromBox.x) * (b.x - toBox.x) < 0;
+      const sameRow =
+        Math.abs(b.y - fromBox.y) < fromBox.size * 0.75 &&
+        Math.abs(b.y - toBox.y) < toBox.size * 0.75;
+      if (between && sameRow) bypass = true;
+    });
+  }
 
-  const startX = fromBox.x + (dx / dist) * (fromBox.size / 2);
-  const startY = fromBox.y + (dy / dist) * (fromBox.size / 2);
-  const endX = toBox.x - (dx / dist) * (toBox.size / 2);
-  const endY = toBox.y - (dy / dist) * (toBox.size / 2);
+  let startX, startY, endX, endY, ctrlX, ctrlY; // ctrl (NaN) — «прямая»
+  if (bypass) {
+    // Дуга над рядом: от верхнего края источника к верхнему краю цели
+    startX = fromBox.x;
+    startY = fromBox.y - fromBox.size / 2;
+    endX = toBox.x;
+    endY = toBox.y - toBox.size / 2;
+    ctrlX = (startX + endX) / 2;
+    ctrlY = Math.min(startY, endY) - Math.max(fromBox.size, toBox.size) * 0.75;
+  } else {
+    const dx = toBox.x - fromBox.x;
+    const dy = toBox.y - fromBox.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return; // самопетлю не рисуем (парсер их не выдаёт)
 
-  // Прямая линия — только когда цель правее и на той же строке
-  const straight = dy === 0 && dx > 0;
-  const midX = (startX + endX) / 2;
-  const midY = (startY + endY) / 2;
-  const bend = straight ? 0 : -Math.min(40, dist * 0.22);
+    startX = fromBox.x + (dx / dist) * (fromBox.size / 2);
+    startY = fromBox.y + (dy / dist) * (fromBox.size / 2);
+    endX = toBox.x - (dx / dist) * (toBox.size / 2);
+    endY = toBox.y - (dy / dist) * (toBox.size / 2);
+
+    if (dy === 0 && dx > 0) {
+      // Соседние блоки на одной строке — прямая линия
+      ctrlX = NaN;
+    } else {
+      // Иначе — чуть приподнимаем дугу, чтобы не сливались встречные
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      ctrlX = midX;
+      ctrlY = midY - Math.min(40, dist * 0.22);
+    }
+  }
 
   // Линия (прямая или квадратичная дуга)
   ctx.strokeStyle = "#94a3b8";
@@ -360,17 +403,17 @@ function drawFlow(ctx, fromBox, toBox, label) {
   ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(startX, startY);
-  if (straight) {
+  if (Number.isNaN(ctrlX)) {
     ctx.lineTo(endX, endY);
   } else {
-    ctx.quadraticCurveTo(midX, midY + bend, endX, endY);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
   }
   ctx.stroke();
 
   // Наконечник стрелки — по касательной в конечной точке дуги
-  const angle = straight
+  const angle = Number.isNaN(ctrlX)
     ? Math.atan2(endY - startY, endX - startX)
-    : Math.atan2(endY - midY - bend, endX - midX);
+    : Math.atan2(endY - ctrlY, endX - ctrlX);
   ctx.beginPath();
   ctx.moveTo(endX, endY);
   ctx.lineTo(endX - 12 * Math.cos(angle - Math.PI / 6), endY - 12 * Math.sin(angle - Math.PI / 6));
@@ -380,19 +423,73 @@ function drawFlow(ctx, fromBox, toBox, label) {
   ctx.fill();
 
   // Подпись формулы потока над серединой линии
-  const labelMidX = (startX + endX) / 2;
-  const labelMidY = (startY + endY) / 2 + bend * 0.5 - 14;
+  let labelX, labelY;
+  if (Number.isNaN(ctrlX)) {
+    labelX = (startX + endX) / 2;
+    labelY = (startY + endY) / 2 - 14;
+  } else {
+    // Середина квадратичной Безье: (P0 + 2*P1 + P2) / 4
+    labelX = (startX + 2 * ctrlX + endX) / 4;
+    labelY = (startY + 2 * ctrlY + endY) / 4 - 12;
+  }
   ctx.fillStyle = "#cbd5e1";
   ctx.font = "12px Manrope, Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(label || "?", labelMidX, labelMidY);
+  ctx.fillText(label || "?", labelX, labelY);
+}
+
+// ------------------------------------------------------------------
+// «Сила заражения»: пунктирная дуга от компартмента-«движителя»
+// к источнику потока. В SEIR слагаемое β*S*I/N означает: люди
+// переходят S → E (сплошная стрелка), а скорость перехода
+// пропорциональна I. Поэтому от блока I над рядом рисуется
+// пунктирная дуга к стрелке — «инфицированные ускоряют заражение».
+// Наконечник не ставится: это влияние, а не перенос людей.
+// ------------------------------------------------------------------
+function drawInfectionEdges(ctx, flows, boxes) {
+  flows.forEach((f) => {
+    const drivers = f.drivers || [];
+    if (!drivers.length || !f.to) return;
+    const fb = boxes[f.from];
+    if (!fb) return;
+
+    drivers.forEach((name) => {
+      const db = boxes[name];
+      if (!db) return;
+      // Дуга над рядом: от верхнего края «движителя» к верхнему
+      // краю источника потока
+      const startX = db.x;
+      const startY = db.y - db.size / 2;
+      const endX = fb.x;
+      const endY = fb.y - fb.size / 2;
+      const ctrlX = (startX + endX) / 2;
+      const ctrlY = Math.min(startY, endY) - Math.max(db.size, fb.size) * 0.7;
+
+      // Янтарный пунктир — «влияние», визуально отличное от потоков
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Точка у источника — конец дуги без стрелки
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.arc(endX, endY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
 }
 
 // ------------------------------------------------------------------
 // Рисует поток-потерю «в никуда» (например, смертность µ*S):
 // короткая стрелка вниз от нижнего края блока, без целевого
-// компартмента. Подпись (µ) — над стрелкой.
+// компартмента. Подпись (µ) — над стрелкой, крупная и контрастная,
+// чтобы параметр читался на тёмном фоне.
 // ------------------------------------------------------------------
 function drawExitFlow(ctx, box, label) {
   const x = box.x;
@@ -400,7 +497,7 @@ function drawExitFlow(ctx, box, label) {
   const yEnd = yStart + box.size * 0.55;
 
   // Штриховая линия вниз от блока
-  ctx.strokeStyle = "#64748b";
+  ctx.strokeStyle = "#94a3b8";
   ctx.lineWidth = 2;
   ctx.setLineDash([4, 3]);
   ctx.beginPath();
@@ -410,7 +507,7 @@ function drawExitFlow(ctx, box, label) {
   ctx.setLineDash([]);
 
   // Наконечник стрелки вниз
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#94a3b8";
   ctx.beginPath();
   ctx.moveTo(x, yEnd);
   ctx.lineTo(x - 6, yEnd - 10);
@@ -418,12 +515,12 @@ function drawExitFlow(ctx, box, label) {
   ctx.closePath();
   ctx.fill();
 
-  // Подпись над стрелкой (µ)
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "12px Manrope, Arial";
+  // Подпись над стрелкой: жирный греческий символ, светлый цвет
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 17px Manrope, Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(label || "?", x, yStart + 13);
+  ctx.fillText(label || "µ", x, yStart + 20);
 }
 
 // Экспорт для тестов (node --test) — в браузере module не определён

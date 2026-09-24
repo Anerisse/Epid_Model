@@ -546,11 +546,15 @@ function labelWithoutFactor(node, name) {
 //   • положительное слагаемое β*S*I/N в dE/dt содержит S и I;
 //     источник — компартмент, у которого есть такое же слагаемое
 //     с минусом (в dS/dt), иначе просто другая переменная;
+//   • «движители» (drivers) — компартменты слагаемого, кроме
+//     источника и цели: для β*S*I/N это I. Люди переходят S → E,
+//     а I лишь задаёт скорость перехода («сила заражения») — на схеме
+//     от I к стрелке рисуется пунктирная дуга влияния;
 //   • отрицательное слагаемое вида -µ*X, где X — сам компартмент
 //     и у слагаемого нет положительного «двойника» (иными словами,
 //     это потеря, а не переход), даёт поток «в никуда»:
 //     { from: X, to: null, label: «µ» } — стрелка уходит из блока
-//     без целевого компартмента.
+//     без целевого компартмента (drivers пусты).
 // ------------------------------------------------------------------
 function inferFlows(equations) {
   const flows = [];
@@ -601,8 +605,12 @@ function inferFlows(equations) {
         if (twin !== undefined) from = twin;
 
         const label = labelWithoutFactor(norm, from);
+        // «Движители»: компартменты в слагаемом, кроме источника и цели
+        const drivers = orderedIdents(norm).filter(
+          (v) => compSet.has(v) && v !== from && v !== eq.name,
+        );
         if (!flows.some((f) => f.from === from && f.to === eq.name)) {
-          flows.push({ from, to: eq.name, label });
+          flows.push({ from, to: eq.name, label, drivers });
         }
       } else {
         // Потеря «в никуда»: отрицательное слагаемое, единственный
@@ -615,7 +623,7 @@ function inferFlows(equations) {
 
         const label = labelWithoutFactor(norm, eq.name);
         if (!flows.some((f) => f.from === eq.name && f.to === null)) {
-          flows.push({ from: eq.name, to: null, label });
+          flows.push({ from: eq.name, to: null, label, drivers: [] });
         }
       }
     });
@@ -633,7 +641,7 @@ function inferFlows(equations) {
 //     parameters:   [ «β», «γ», «N» ],           // в порядке появления
 //     time_vars:    [ «t» ],                     // переменные времени
 //     functions:    [ ...используемые функции ],
-//     flows:        [ { from, to, label } ]  // to === null — «потеря» в никуда
+//     flows:        [ { from, to, label, drivers } ]  // to === null — «потеря» в никуда; drivers — компартменты-«движители» (для β*S*I/N это I)
 //   }
 // Бросает ParseError с понятным русским сообщением.
 // ------------------------------------------------------------------
