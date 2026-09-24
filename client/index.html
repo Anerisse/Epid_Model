@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Моделирование эпидемий</title>
+
+    <!-- Шрифты: Manrope для текста, Space Grotesk для заголовков -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Настройки темы Tailwind: свои цвета и шрифты
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Manrope", "system-ui", "sans-serif"],
+              display: ["Space Grotesk", "sans-serif"],
+            },
+            colors: {
+              ink: {
+                950: "#080d1a",
+                900: "#0b1324",
+                800: "#101a30",
+                700: "#16223c",
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      /* ---------- База и фоновые эффекты ---------- */
+      body {
+        font-family: "Manrope", system-ui, sans-serif;
+        color: #e2e8f0;
+      }
+      .font-display {
+        font-family: "Space Grotesk", sans-serif;
+      }
+
+      /* Мягкие светящиеся пятна на фоне — "изюминка" */
+      .bg-aurora {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(60rem 40rem at 90% -10%, rgba(52, 211, 153, 0.14), transparent 60%),
+          radial-gradient(50rem 35rem at -10% 110%, rgba(34, 211, 238, 0.12), transparent 60%),
+          radial-gradient(40rem 30rem at 50% 120%, rgba(251, 113, 133, 0.06), transparent 60%);
+      }
+
+      /* ---------- Сайдбар: пункты навигации ---------- */
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.9rem;
+        color: #94a3b8;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        text-align: left;
+      }
+      .nav-item:hover {
+        color: #e2e8f0;
+        background: rgba(148, 163, 184, 0.07);
+      }
+      .nav-item.active {
+        color: #fff;
+        background: linear-gradient(90deg, rgba(52, 211, 153, 0.16), rgba(34, 211, 238, 0.1));
+        border-color: rgba(52, 211, 153, 0.35);
+        box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.12), 0 8px 24px -12px rgba(52, 211, 153, 0.5);
+      }
+      .nav-item.active .nav-icon {
+        color: #34d399;
+      }
+      .nav-icon {
+        flex-shrink: 0;
+        color: #64748b;
+        transition: color 0.18s ease;
+      }
+      .nav-item:hover .nav-icon {
+        color: #22d3ee;
+      }
+
+      /* ---------- Карточки и чипы ---------- */
+      .glass-card {
+        background: linear-gradient(160deg, rgba(22, 34, 60, 0.65), rgba(11, 19, 36, 0.85));
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        border-radius: 1.25rem;
+        backdrop-filter: blur(6px);
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(148, 163, 184, 0.07);
+        color: #cbd5e1;
+      }
+      .chip-accent {
+        border-color: rgba(52, 211, 153, 0.4);
+        background: rgba(52, 211, 153, 0.1);
+        color: #6ee7b7;
+      }
+
+      /* ---------- Редактор ---------- */
+      #equation-input:empty::before {
+        content: attr(data-placeholder);
+        color: #475569;
+      }
+      #equation-input:focus {
+        outline: none;
+        border-color: rgba(52, 211, 153, 0.5) !important;
+        box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.12);
+      }
+
+      /* ---------- Виртуальная клавиатура ---------- */
+      #virtual-keyboard button {
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      /* ---------- Canvas ---------- */
+      #diagram-canvas {
+        background:
+          radial-gradient(120% 120% at 50% 0%, rgba(34, 211, 238, 0.05), transparent 60%),
+          #0c1322;
+        border-radius: 1rem;
+      }
+
+      /* ---------- Скроллбары ---------- */
+      *::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      *::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.25);
+        border-radius: 9999px;
+      }
+      *::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      /* Тосты (уведомления) */
+      .toast {
+        animation: toast-in 0.25s ease;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      @keyframes toast-in {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-ink-950 text-slate-200 antialiased">
+    <!-- Фоновое свечение -->
+    <div class="bg-aurora"></div>
+
+    <div class="relative z-10 min-h-screen flex flex-col">
+      <!-- ===== Верхняя панель ===== -->
+      <header
+        class="px-6 py-4 flex items-center justify-between border-b border-slate-800/70 bg-ink-900/70 backdrop-blur-md"
+      >
+        <div class="flex items-center gap-3">
+          <!-- Логотип: градиентный "пульс" -->
+          <div
+            class="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-500/25"
+          >
+            <svg viewBox="0 0 24 24" class="w-6 h-6 text-ink-950" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+              <polyline points="2 14 8 14 11 6 15 16 18 11 22 11" />
+            </svg>
+            <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-ping opacity-60"></span>
+          </div>
+          <div>
+            <h1 class="font-display text-xl font-bold tracking-tight text-white">
+              Моделирование эпидемий
+            </h1>
+            <p class="text-xs text-slate-500">конструктор эпидемиологических моделей</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span
+            class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/25"
+          >
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            API · онлайн
+          </span>
+          <span
+            class="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800/80 text-slate-400 border border-slate-700"
+          >
+            MVP · этап 3
+          </span>
+        </div>
+      </header>
+
+      <div class="flex flex-1 overflow-hidden">
+        <!-- ===== Левая навигация: модули системы ===== -->
+        <aside
+          class="w-64 shrink-0 p-4 border-r border-slate-800/70 bg-ink-900/40 backdrop-blur-md hidden md:flex flex-col gap-1.5 overflow-y-auto"
+        >
+          <div class="px-2 pb-2 pt-1 text-[11px] uppercase tracking-wider text-slate-600 font-semibold">
+            Этапы работы с моделью
+          </div>
+
+          <button data-section="model" class="nav-item active">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.5 3h15" /><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3" /><path d="M6 14h12" />
+              </svg>
+            </span>
+            <span class="flex flex-col">
+              <span class="font-semibold text-sm">Модель</span>
+              <span class="text-[11px] text-slate-500">уравнения · блок-схема</span>
+            </span>
+          </button>
+
+          <button data-section="simulation" class="nav-item">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 17 9 11 13 15 21 7" /><polyline points="15 7 21 7 21 13" />
+              </svg>
+            </span>
+            <span class="flex-1 flex flex-col">
+              <span class="font-semibold text-sm">Симуляция</span>
+              <span class="text-[11px] text-slate-500">графики S/I/R</span>
+            </span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/50 text-slate-400">скоро</span>
+          </button>
+
+          <button data-section="parameterization" class="nav-item">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="7" x2="20" y2="7" /><circle cx="9" cy="7" r="2" /><line x1="4" y1="17" x2="20" y2="17" /><circle cx="15" cy="17" r="2" />
+              </svg>
+            </span>
+            <span class="flex-1 flex flex-col">
+              <span class="font-semibold text-sm">Параметризация</span>
+              <span class="text-[11px] text-slate-500">оценка β, γ</span>
+            </span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/50 text-slate-400">скоро</span>
+          </button>
+
+          <button data-section="verification" class="nav-item">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" /><polyline points="8 12 11 15 16 9" />
+              </svg>
+            </span>
+            <span class="flex-1 flex flex-col">
+              <span class="font-semibold text-sm">Верификация</span>
+              <span class="text-[11px] text-slate-500">сравнение с данными</span>
+            </span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/50 text-slate-400">скоро</span>
+          </button>
+
+          <button data-section="sensitivity" class="nav-item">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="2 12 7 12 10 5 14 19 17 12 22 12" />
+              </svg>
+            </span>
+            <span class="flex-1 flex flex-col">
+              <span class="font-semibold text-sm">Чувствительность</span>
+              <span class="text-[11px] text-slate-500">влияние параметров</span>
+            </span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/50 text-slate-400">скоро</span>
+          </button>
+
+          <button data-section="scenario" class="nav-item">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 22 8.5 12 15 2 8.5 12 2" /><polyline points="2 15.5 12 22 22 15.5" />
+              </svg>
+            </span>
+            <span class="flex-1 flex flex-col">
+              <span class="font-semibold text-sm">Сценарный анализ</span>
+              <span class="text-[11px] text-slate-500">вмешательства · с соавтором</span>
+            </span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/50 text-slate-400">скоро</span>
+          </button>
+
+          <div class="mt-auto pt-4">
+            <div class="glass-card p-3 text-[11px] leading-relaxed text-slate-500">
+              <span class="text-emerald-400 font-semibold">Архитектура:</span> единая система,
+              каждый этап — отдельный модуль. В базе — по одному алгоритму на модуль,
+              систему можно расширять новыми алгоритмами.
+            </div>
+          </div>
+        </aside>
+
+        <!-- ===== Область контента ===== -->
+        <main class="flex-1 flex flex-col min-w-0">
+          <!-- ---- Раздел «Модель» (рабочий) ---- -->
+          <section id="section-model" data-section-page class="flex flex-col flex-1 min-h-0">
+            <div class="px-6 pt-5 pb-3 flex items-end justify-between gap-4">
+              <div>
+                <h2 class="font-display text-lg font-semibold text-white">Модель эпидемии</h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Введите систему дифференциальных уравнений — диаграмма строится автоматически
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  type="text"
+                  id="equation-name"
+                  placeholder="Название модели, например SIR"
+                  class="w-56 bg-ink-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50"
+                />
+                <!-- Переход к следующему шагу (симуляции). Кнопка пока неактивна:
+                     включится на этапе 4, когда появится модуль симуляции -->
+                <button
+                  disabled
+                  title="Симуляция появится на следующем этапе разработки"
+                  class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800/60 text-slate-600 border border-slate-700/50 cursor-not-allowed select-none"
+                >
+                  Следующий шаг →
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-1 min-h-0 px-6 pb-6 gap-4">
+              <!-- Левая панель: уравнения -->
+              <div
+                id="left-panel"
+                class="w-[46%] glass-card p-4 flex flex-col min-w-0"
+              >
+                <div class="flex items-center justify-between gap-2 mb-3">
+                  <span class="text-sm font-semibold text-slate-300">Система ОДУ</span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      onclick="updateDiagram()"
+                      class="px-3 py-1.5 rounded-xl text-sm font-medium bg-gradient-to-r from-emerald-500 to-cyan-500 text-ink-950 hover:opacity-90 transition"
+                    >
+                      Построить
+                    </button>
+                    <button
+                      onclick="saveEquation()"
+                      class="px-3 py-1.5 rounded-xl text-sm font-medium bg-slate-700/70 text-slate-200 hover:bg-slate-600/70 transition whitespace-nowrap"
+                    >
+                      Сохранить модель
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Область ввода уравнений -->
+                <div
+                  id="equation-input"
+                  class="min-h-[140px] border border-slate-700 rounded-xl p-3 mb-1 bg-ink-800/60 text-slate-200 focus:outline-none overflow-y-auto leading-relaxed font-mono text-[13px]"
+                  contenteditable="true"
+                  onclick="showKeyboard()"
+                  data-placeholder="dS/dt = -β * S * I / N&#10;dI/dt = β * S * I / N - γ * I&#10;dR/dt = γ * I"
+                ></div>
+
+                <!-- Живой разбор системы парсером (этап 1) -->
+                <div id="parse-info" class="text-[11px] mb-3 min-h-[16px] text-slate-500"></div>
+
+                <!-- Кнопка виртуальной клавиатуры -->
+                <button
+                  onclick="toggleKeyboard()"
+                  class="mb-3 self-start px-3 py-1.5 rounded-xl text-sm bg-slate-700/50 text-slate-300 hover:bg-slate-600/60 transition"
+                >
+                  ⌨️ Виртуальная клавиатура
+                </button>
+
+                <!-- Сохранённые модели -->
+                <div class="flex-1 overflow-y-auto min-h-0">
+                  <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                    Сохранённые модели
+                  </h3>
+                  <div id="saved-equations" class="space-y-2"></div>
+                </div>
+              </div>
+
+              <!-- Разделитель -->
+              <div
+                id="divider"
+                class="w-1 bg-slate-700/60 rounded-full cursor-col-resize hover:bg-emerald-500/60 transition-colors"
+              ></div>
+
+              <!-- Правая панель: диаграмма -->
+              <div id="right-panel" class="flex-1 glass-card p-4 flex flex-col min-w-0">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-sm font-semibold text-slate-300">Блок-схема компартментов</span>
+                  <span id="diagram-compartments" class="text-[11px] text-slate-500">—</span>
+                </div>
+                <canvas
+                  id="diagram-canvas"
+                  class="flex-1 w-full min-h-0 border border-slate-700/60"
+                ></canvas>
+                <div id="diagram-flows" class="text-[11px] text-slate-500 mt-2 min-h-[16px] truncate"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---- Заглушки будущих модулей (единый шаблон) ---- -->
+          <section id="section-simulation" data-section-page class="hidden p-8 overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+              <div class="glass-card p-8">
+                <div class="flex items-center gap-4 mb-6">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 17 9 11 13 15 21 7" /><polyline points="15 7 21 7 21 13" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="font-display text-xl font-semibold text-white">Симуляция</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">
+                      Численное интегрирование системы ОДУ и графики динамики компартментов
+                    </p>
+                  </div>
+                </div>
+                <p class="text-sm text-slate-400 leading-relaxed mb-6">
+                  Модуль будет запускать модель во времени с заданными параметрами
+                  и начальными условиями и строить кривые S(t), I(t), R(t).
+                  Планируется метод Рунге–Кутты 4-го порядка.
+                </p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                  <span class="chip chip-accent">Рунге–Кутта 4</span>
+                  <span class="chip">численное интегрирование</span>
+                  <span class="chip">графики S/I/R(t)</span>
+                  <span class="chip">начальные условия</span>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                  Модуль в разработке — появится в следующем этапе
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="section-parameterization" data-section-page class="hidden p-8 overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+              <div class="glass-card p-8">
+                <div class="flex items-center gap-4 mb-6">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="4" y1="7" x2="20" y2="7" /><circle cx="9" cy="7" r="2" /><line x1="4" y1="17" x2="20" y2="17" /><circle cx="15" cy="17" r="2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="font-display text-xl font-semibold text-white">Параметризация</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">
+                      Оценка параметров модели (β, γ) по наблюдаемым данным
+                    </p>
+                  </div>
+                </div>
+                <p class="text-sm text-slate-400 leading-relaxed mb-6">
+                  Базовый алгоритм — метод наименьших квадратов. Альтернативный и
+                  исследовательский алгоритм — нейросеть (инверсная модель: обучается
+                  восстанавливать параметры по кривой заболеваемости на синтетических
+                  данных, которые генерирует встроенный симулятор).
+                </p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                  <span class="chip chip-accent">МНК (базовый)</span>
+                  <span class="chip chip-accent">Нейросеть · инверсная модель</span>
+                  <span class="chip">Байесовский подход</span>
+                  <span class="chip">Эволюционные алгоритмы</span>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                  Модуль в разработке — появится после симуляции
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="section-verification" data-section-page class="hidden p-8 overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+              <div class="glass-card p-8">
+                <div class="flex items-center gap-4 mb-6">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="9" /><polyline points="8 12 11 15 16 9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="font-display text-xl font-semibold text-white">Верификация</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">
+                      Проверка соответствия модели реальным данным
+                    </p>
+                  </div>
+                </div>
+                <p class="text-sm text-slate-400 leading-relaxed mb-6">
+                  Сравнение модельных кривых с фактической статистикой заболеваемости,
+                  анализ остатков и оценка достоверности прогнозов.
+                </p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                  <span class="chip">сравнение с данными</span>
+                  <span class="chip">анализ остатков</span>
+                  <span class="chip">метрики качества</span>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                  Модуль в разработке
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="section-sensitivity" data-section-page class="hidden p-8 overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+              <div class="glass-card p-8">
+                <div class="flex items-center gap-4 mb-6">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="2 12 7 12 10 5 14 19 17 12 22 12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="font-display text-xl font-semibold text-white">Анализ чувствительности</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">
+                      Как входные параметры влияют на выходные характеристики модели
+                    </p>
+                  </div>
+                </div>
+                <p class="text-sm text-slate-400 leading-relaxed mb-6">
+                  Выявление наиболее критичных параметров, расчёт индексов и эластичностей
+                  базового репродуктивного числа R₀. Нейросеть может выступать как суррогат
+                  модели для быстрого перебора параметров.
+                </p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                  <span class="chip">эластичности R₀</span>
+                  <span class="chip">индексы чувствительности</span>
+                  <span class="chip">суррогат-модель</span>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                  Модуль в разработке
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="section-scenario" data-section-page class="hidden p-8 overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+              <div class="glass-card p-8">
+                <div class="flex items-center gap-4 mb-6">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="12 2 22 8.5 12 15 2 8.5 12 2" /><polyline points="2 15.5 12 22 22 15.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="font-display text-xl font-semibold text-white">Сценарный анализ</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">
+                      Оценка эффективности противоэпидемических мер (совместно с соавтором)
+                    </p>
+                  </div>
+                </div>
+                <p class="text-sm text-slate-400 leading-relaxed mb-6">
+                  «Что будет, если…»: моделирование вмешательств — масочный режим, карантин,
+                  вакцинация, лечение. Сравнение сценариев по пику эпидемии, длительности
+                  и суммарной заболеваемости. Используется общая симуляция и модуль
+                  чувствительности.
+                </p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                  <span class="chip">масочный режим</span>
+                  <span class="chip">карантин</span>
+                  <span class="chip">вакцинация</span>
+                  <span class="chip">лечение</span>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
+                  Модуль в разработке (реализуется вместе с соавтором)
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- Область уведомлений (тосты) -->
+    <div id="toast-area" class="fixed top-4 right-4 z-[60] flex flex-col gap-2"></div>
+
+    <!-- Виртуальная клавиатура: плавающая панель с отступами по бокам -->
+    <div
+      id="virtual-keyboard"
+      class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(1240px,calc(100vw-1.5rem))] z-50 rounded-2xl border border-slate-600/50 shadow-2xl backdrop-blur-md bg-ink-800/95"
+      style="max-height: 50vh; overflow-y: auto"
+    ></div>
+
+    <script src="./js/keyboard.js?v=6"></script>
+    <script src="./js/equations.js?v=6"></script>
+    <script src="./js/diagram.js?v=6"></script>
+    <script src="./js/parser.js?v=6"></script>
+    <script src="./js/main.js?v=6"></script>
+  </body>
+</html>

@@ -1,0 +1,437 @@
+// ============================================================
+// diagram.js — авто-блок-схема компартментной модели (этап 2)
+// ============================================================
+// Блок-схема строится по структуре, которую даёт парсер ОДУ
+// (client/js/parser.js): компартменты — из левых частей
+// уравнений, потоки между ними — из положительных слагаемых
+// правых частей (inferFlows). Схема универсальна: SIR, SEIR
+// и любые другие компартментные модели.
+// Перерисовка на каждый ввод (дебаунс в main.js) + кнопка
+// «Построить».
+
+// Тематический цвет блока для известных компартментов
+// (для остальных берётся цвет из палитры COMPARTMENT_PALETTE)
+const COMPARTMENT_THEME = {
+  S: "#10b981", // восприимчивые — зелёный
+  E: "#f59e0b", // инкубационный период — янтарный
+  I: "#f43f5e", // инфицированные — розовый
+  R: "#0ea5e9", // выздоровевшие — голубой
+  D: "#64748b", // умершие — серый
+};
+
+// Подпись под символом для известных компартментов
+const COMPARTMENT_SUBLABEL = {
+  S: "Susceptible",
+  E: "Exposed",
+  I: "Infected",
+  R: "Recovered",
+  D: "Deceased",
+};
+
+// Дополнительные цвета для произвольных компартментов
+const COMPARTMENT_PALETTE = [
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+  "#6366f1",
+  "#22c55e",
+  "#eab308",
+  "#06b6d4",
+];
+
+// ------------------------------------------------------------------
+// Цвет блока для компартмента: тематический, если имя известно,
+// иначе — по порядковому номеру из палитры.
+// ------------------------------------------------------------------
+function compartmentColor(name, index) {
+  if (COMPARTMENT_THEME[name]) return COMPARTMENT_THEME[name];
+  return COMPARTMENT_PALETTE[index % COMPARTMENT_PALETTE.length];
+}
+
+// ------------------------------------------------------------------
+// Перенаправления потоков, заданные вручную (fallback этапа 2 —
+// упрощённый вариант, до полноценной редактируемой таблицы потоков).
+// Правило применяется к потоку, если совпали и источник, и подпись,
+// — тогда целевой компартмент заменяется на указанный.
+// Пример курсовой: в системе SEIR слагаемое β*S*I/N входит в dE/dt
+// (поток S → E), но на схеме заражение рисуют сразу в I — стрелка
+// S → I с подписью β*I/N (классический вид).
+// ------------------------------------------------------------------
+const FLOW_REDIRECTS = [
+  { from: "S", label: "β*I/N", to: "I" },
+];
+
+// Применяет пользовательские перенаправления к списку потоков.
+// Потоки без подходящего правила возвращаются без изменений.
+function redirectFlows(flows) {
+  return flows.map((f) => {
+    const rule = FLOW_REDIRECTS.find((r) => r.from === f.from && r.label === f.label);
+    return rule ? { ...f, to: rule.to } : f;
+  });
+}
+
+// ------------------------------------------------------------------
+// Упорядочивает компартменты для размещения слева направо так,
+// чтобы потоки вели в правильном направлении: топологическая
+// сортировка (алгоритм Кана) по графу потоков from → to.
+// Узлы без потоков и узлы из циклов добавляются в конец в исходном
+// порядке ввода — схема не «ломается» на любой системе.
+// ------------------------------------------------------------------
+function orderCompartments(names, flows) {
+  const indeg = new Map(names.map((n) => [n, 0]));
+  const adjacency = new Map(names.map((n) => [n, []]));
+
+  flows.forEach((f) => {
+    if (!indeg.has(f.from) || !indeg.has(f.to) || f.from === f.to) return;
+    adjacency.get(f.from).push(f.to);
+    indeg.set(f.to, indeg.get(f.to) + 1);
+  });
+
+  // Очередь Кана: узлы без входящих потоков
+  const queue = names.filter((n) => indeg.get(n) === 0);
+  const result = [];
+  const placed = new Set();
+
+  while (queue.length) {
+    const node = queue.shift();
+    if (placed.has(node)) continue;
+    placed.add(node);
+    result.push(node);
+
+    adjacency.get(node).forEach((next) => {
+      indeg.set(next, indeg.get(next) - 1);
+      if (indeg.get(next) === 0 && !placed.has(next)) queue.push(next);
+    });
+  }
+
+  // Неразмещённые (циклы, изолированные) — в конец в порядке ввода
+  names.forEach((n) => {
+    if (!placed.has(n)) result.push(n);
+  });
+
+  return result;
+}
+
+// ------------------------------------------------------------------
+// Считает центры блоков компартментов на холсте.
+// order — уже упорядоченный список имён; для 1–6 компартментов —
+// одна строка, для большего числа — сетка (квадрат корня из n).
+// Возвращает объект { имя: { x, y, size } }.
+// ------------------------------------------------------------------
+function layoutBoxes(order, width, height) {
+  const n = order.length;
+  const perRow = n <= 6 ? n : Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / perRow);
+
+  // Сторона блока: подстраивается под шаг сетки, но не меньше 44
+  const boxSize = Math.max(
+    44,
+    Math.min(84, Math.min((width - 40) / (perRow + 1), (height - 60) / (rows + 1)) * 0.8),
+  );
+
+  const boxes = {};
+  order.forEach((name, i) => {
+    const col = i % perRow;
+    const row = Math.floor(i / perRow);
+    // Последняя строка может быть короче — центрируем её отдельно
+    const rowCount = row === rows - 1 ? n - row * perRow : perRow;
+    boxes[name] = {
+      x: ((col + 1) * width) / (rowCount + 1),
+      y: ((row + 1) * height) / (rows + 1),
+      size: boxSize,
+    };
+  });
+  return boxes;
+}
+
+// ------------------------------------------------------------------
+// Обновляет блок-схему на canvas по результату разбора парсера.
+// Дополнительно обновляет подпись панели (список компартментов)
+// и строку с потоками под холстом.
+// ------------------------------------------------------------------
+function updateDiagram() {
+  // Текст системы сериализуем, чтобы дроби dS/dt не «разбивались»
+  const equationText = serializeEquation();
+  const canvas = document.getElementById("diagram-canvas");
+  const ctx = canvas.getContext("2d");
+
+  // Безопасный размер: если холст ещё не размещён (offsetWidth = 0),
+  // берём запасные размеры, чтобы ничего не «схлопнулось».
+  const width = canvas.offsetWidth || 600;
+  const height = canvas.offsetHeight || 400;
+  canvas.width = width;
+  canvas.height = height;
+
+  // Фон холста — тёмный градиент в тон интерфейса
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, "#0e1730");
+  bg.addColorStop(1, "#0a1122");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  updateDiagramCaptions(null, null);
+
+  if (!equationText) {
+    // Заглушка: подсказка, когда уравнений ещё нет
+    drawMessage(ctx, width, height, "Введите систему уравнений — здесь появится блок-схема");
+    return;
+  }
+
+  const parsed = parseOdeSystemSafe(equationText);
+  if (!parsed.ok) {
+    // Система не разобрана — показываем текст ошибки (как в ленте разбора)
+    drawMessage(ctx, width, height, parsed.error, "#f43f5e");
+    return;
+  }
+
+  const s = parsed.structure;
+  if (s.compartments.length === 0) {
+    drawMessage(ctx, width, height, "Компартменты не найдены");
+    return;
+  }
+
+  // Подпись панели и строка потоков — по потокам с учётом
+  // ручных перенаправлений (чтобы подпись совпадала с рисунком)
+  const flows = redirectFlows(s.flows);
+  updateDiagramCaptions(s.compartments.map((c) => c.name), flows);
+
+  // Порядок блоков слева направо по потокам
+  const order = orderCompartments(
+    s.compartments.map((c) => c.name),
+    flows,
+  );
+  const boxes = layoutBoxes(order, width, height);
+
+  // Сначала стрелки (под блоками — чтобы не перекрывали края),
+  // затем сами блоки
+  flows.forEach((f) => {
+    if (boxes[f.from]) {
+      if (boxes[f.to]) {
+        drawFlow(ctx, boxes[f.from], boxes[f.to], f.label, boxes);
+      } else {
+        // Потеря «в никуда» (µ*S и т.п.) — стрелка вниз от блока
+        drawExitFlow(ctx, boxes[f.from], f.label);
+      }
+    }
+  });
+
+  order.forEach((name, index) => {
+    drawBlock(ctx, boxes[name].x, boxes[name].y, name, compartmentColor(name, index), boxes[name].size);
+  });
+
+  // Строка параметров внизу слева
+  if (s.parameters.length) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "11px Manrope, Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("Параметры: " + s.parameters.join(", "), 14, height - 12);
+  }
+}
+
+// ------------------------------------------------------------------
+// Обновляет подпись панели (компартменты) и строку с потоками.
+// names/flows — null, если разбора не было (сбрасываем в «—»).
+// ------------------------------------------------------------------
+function updateDiagramCaptions(names, flows) {
+  const caption = document.getElementById("diagram-compartments");
+  if (caption) {
+    caption.textContent = names ? names.join(" · ") : "—";
+  }
+  const flowsLine = document.getElementById("diagram-flows");
+  if (flowsLine) {
+    if (!names) {
+      flowsLine.textContent = "";
+    } else if (!flows || flows.length === 0) {
+      flowsLine.textContent = "Потоки между компартментами не найдены";
+    } else {
+      // Внутренние переходы и потери («в никуда») показываем отдельно
+      const transfers = flows.filter((f) => f.to);
+      const losses = flows.filter((f) => !f.to);
+      const bits = [];
+      if (transfers.length)
+        bits.push(transfers.map((f) => `${f.from} → ${f.to} (${f.label})`).join(" · "));
+      if (losses.length)
+        bits.push(`Потери: ${losses.map((f) => `${f.from} (${f.label})`).join(" · ")}`);
+      flowsLine.textContent = "Потоки: " + bits.join(" · ");
+    }
+  }
+}
+
+// ------------------------------------------------------------------
+// Центрированное сообщение на холсте (заглушка или ошибка разбора).
+// ------------------------------------------------------------------
+function drawMessage(ctx, width, height, text, color = "#64748b") {
+  ctx.fillStyle = color;
+  ctx.font = "14px Manrope, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const maxWidth = width - 40;
+
+  // Переносим длинное сообщение по словам, чтобы оно не выходило за край
+  const lines = [];
+  let current = "";
+  String(text)
+    .split(/\s+/)
+    .forEach((word) => {
+      const candidate = current ? current + " " + word : word;
+      if (ctx.measureText(candidate).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = candidate;
+      }
+    });
+  if (current) lines.push(current);
+
+  const startY = height / 2 - ((lines.length - 1) * 18) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, width / 2, startY + i * 18);
+  });
+}
+
+// ------------------------------------------------------------------
+// Рисует один блок-компартмент: закруглённый квадрат с символом
+// и подписью. x/y — центр блока, size — сторона.
+// ------------------------------------------------------------------
+function drawBlock(ctx, x, y, symbol, color, size) {
+  const radius = 14;
+  const half = size / 2;
+
+  // Тень под блоком для объёма
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 26;
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x - half, y - half, size, size, radius);
+  ctx.fill();
+  ctx.restore();
+
+  // Сам блок
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x - half, y - half, size, size, radius);
+  ctx.fill();
+
+  // Символ компартмента
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${Math.round(size * 0.32)}px Manrope, Arial`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(symbol, x, y - size * 0.06);
+
+  // Подпись под символом (для известных компартментов)
+  const sublabel = COMPARTMENT_SUBLABEL[symbol];
+  if (sublabel) {
+    ctx.font = `${Math.max(9, Math.round(size * 0.13))}px Manrope, Arial`;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(sublabel, x, y + size * 0.32);
+  }
+}
+
+// ------------------------------------------------------------------
+// Рисует поток-стрелку между двумя блоками с подписью формулы.
+// Линия идёт от края блока-источника до края целевого блока;
+// если поток ведёт влево или по вертикали — изгибаем дугу вверх.
+// ------------------------------------------------------------------
+function drawFlow(ctx, fromBox, toBox, label) {
+  const dx = toBox.x - fromBox.x;
+  const dy = toBox.y - fromBox.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist === 0) return; // самопетлю не рисуем (парсер их не выдаёт)
+
+  const startX = fromBox.x + (dx / dist) * (fromBox.size / 2);
+  const startY = fromBox.y + (dy / dist) * (fromBox.size / 2);
+  const endX = toBox.x - (dx / dist) * (toBox.size / 2);
+  const endY = toBox.y - (dy / dist) * (toBox.size / 2);
+
+  // Прямая линия — только когда цель правее и на той же строке
+  const straight = dy === 0 && dx > 0;
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+  const bend = straight ? 0 : -Math.min(40, dist * 0.22);
+
+  // Линия (прямая или квадратичная дуга)
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  if (straight) {
+    ctx.lineTo(endX, endY);
+  } else {
+    ctx.quadraticCurveTo(midX, midY + bend, endX, endY);
+  }
+  ctx.stroke();
+
+  // Наконечник стрелки — по касательной в конечной точке дуги
+  const angle = straight
+    ? Math.atan2(endY - startY, endX - startX)
+    : Math.atan2(endY - midY - bend, endX - midX);
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(endX - 12 * Math.cos(angle - Math.PI / 6), endY - 12 * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(endX - 12 * Math.cos(angle + Math.PI / 6), endY - 12 * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fillStyle = "#94a3b8";
+  ctx.fill();
+
+  // Подпись формулы потока над серединой линии
+  const labelMidX = (startX + endX) / 2;
+  const labelMidY = (startY + endY) / 2 + bend * 0.5 - 14;
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "12px Manrope, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(label || "?", labelMidX, labelMidY);
+}
+
+// ------------------------------------------------------------------
+// Рисует поток-потерю «в никуда» (например, смертность µ*S):
+// короткая стрелка вниз от нижнего края блока, без целевого
+// компартмента. Подпись (µ) — над стрелкой.
+// ------------------------------------------------------------------
+function drawExitFlow(ctx, box, label) {
+  const x = box.x;
+  const yStart = box.y + box.size / 2;
+  const yEnd = yStart + box.size * 0.55;
+
+  // Штриховая линия вниз от блока
+  ctx.strokeStyle = "#64748b";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(x, yStart);
+  ctx.lineTo(x, yEnd);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Наконечник стрелки вниз
+  ctx.fillStyle = "#64748b";
+  ctx.beginPath();
+  ctx.moveTo(x, yEnd);
+  ctx.lineTo(x - 6, yEnd - 10);
+  ctx.lineTo(x + 6, yEnd - 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Подпись над стрелкой (µ)
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "12px Manrope, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(label || "?", x, yStart + 13);
+}
+
+// Экспорт для тестов (node --test) — в браузере module не определён
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    orderCompartments,
+    layoutBoxes,
+    compartmentColor,
+    redirectFlows,
+  };
+}
