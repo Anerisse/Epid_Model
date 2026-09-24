@@ -155,14 +155,19 @@ function updateDiagram() {
   // Текст системы сериализуем, чтобы дроби dS/dt не «разбивались»
   const equationText = serializeEquation();
   const canvas = document.getElementById("diagram-canvas");
-  const ctx = canvas.getContext("2d");
 
   // Безопасный размер: если холст ещё не размещён (offsetWidth = 0),
   // берём запасные размеры, чтобы ничего не «схлопнулось».
   const width = canvas.offsetWidth || 600;
   const height = canvas.offsetHeight || 400;
-  canvas.width = width;
-  canvas.height = height;
+  // Учитываем плотность пикселей экрана (devicePixelRatio): без этого
+  // на масштабе 125–200% текст и линии выглядят размытыми. Физический
+  // размер — в физических px, отрисовка — в CSS-px через setTransform.
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   // Фон холста — тёмный градиент в тон интерфейса
   const bg = ctx.createLinearGradient(0, 0, width, height);
@@ -211,8 +216,18 @@ function updateDiagram() {
       if (boxes[f.to]) {
         drawFlow(ctx, boxes[f.from], boxes[f.to], f.label, boxes);
       } else {
-        // Потеря «в никуда» (µ*S и т.п.) — стрелка вниз от блока
-        drawExitFlow(ctx, boxes[f.from], f.label);
+        // Потеря «в никуда» (µ*S и т.п.) — стрелка вниз от блока.
+        // Ограничиваем длину ближайшим блоком снизу, чтобы стрелка
+        // не наезжала на следующий ряд схемы
+        const src = boxes[f.from];
+        let maxEndY = height - 26;
+        for (const name in boxes) {
+          const b = boxes[name];
+          if (b !== src && b.y > src.y) {
+            maxEndY = Math.min(maxEndY, b.y - b.size / 2 - 4);
+          }
+        }
+        drawExitFlow(ctx, src, f.label, maxEndY, width, height);
       }
     }
   });
@@ -487,14 +502,23 @@ function drawInfectionEdges(ctx, flows, boxes) {
 
 // ------------------------------------------------------------------
 // Рисует поток-потерю «в никуда» (например, смертность µ*S):
-// короткая стрелка вниз от нижнего края блока, без целевого
-// компартмента. Подпись (µ) — над стрелкой, крупная и контрастная,
-// чтобы параметр читался на тёмном фоне.
+// стрелка вниз от нижнего края блока, без целевого компартмента.
+// Подпись (µ) — крупная, светлая, на непрозрачной подложке в точный
+// цвет холста в этой точке: «таблетка» невидима на фоне, но гасит
+// проходящие сквозь неё линии. maxEndY — верхняя граница, до которой
+// можно тянуть стрелку (ближайший блок ниже), чтобы она не наезжала
+// на следующий ряд схемы. width/height — CSS-размеры холста (для
+// расчёта цвета позиции фона).
 // ------------------------------------------------------------------
-function drawExitFlow(ctx, box, label) {
+function drawExitFlow(ctx, box, label, maxEndY, width, height) {
   const x = box.x;
   const yStart = box.y + box.size / 2;
-  const yEnd = yStart + box.size * 0.55;
+  // Чуть более длинная стрелка (0.7 стороны блока), но не дальше
+  // ближайшего блока под строкой и не короче самой стрелки с наконечником
+  const yEnd = Math.max(
+    yStart + 32,
+    Math.min(yStart + box.size * 0.7, maxEndY !== undefined ? maxEndY : Infinity),
+  );
 
   // Штриховая линия вниз от блока
   ctx.strokeStyle = "#94a3b8";
@@ -515,12 +539,31 @@ function drawExitFlow(ctx, box, label) {
   ctx.closePath();
   ctx.fill();
 
-  // Подпись над стрелкой: жирный греческий символ, светлый цвет
-  ctx.fillStyle = "#f1f5f9";
+  // Подпись над стрелкой: жирный греческий символ на «слепой» подложке
+  const text = label || "µ";
   ctx.font = "bold 17px Manrope, Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(label || "µ", x, yStart + 20);
+  const textWidth = ctx.measureText(text).width;
+  const labelY = yStart + 24;
+
+  // Непрозрачная «таблетка» в цвет холста. Фон — диагональный градиент
+  // (0,0)→(width,height) от #0e1730 до #0a1122; повторяем его формулу,
+  // чтобы заливка идеально совпала с канвой позади подписи.
+  const denom = width * width + height * height;
+  const t = Math.max(0, Math.min(1, (x * width + labelY * height) / (denom || 1)));
+  const from = [14, 23, 48]; // #0e1730 — верхний угол градиента
+  const to = [10, 17, 34]; // #0a1122 — нижний угол градиента
+  const rgb = from.map((v, i) => Math.round(v + (to[i] - v) * t));
+  const pillW = textWidth + 16;
+  const pillH = 24;
+  ctx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+  ctx.beginPath();
+  ctx.roundRect(x - pillW / 2, labelY - 14, pillW, pillH, 7);
+  ctx.fill();
+
+  ctx.fillStyle = "#f1f5f9";
+  ctx.fillText(text, x, labelY);
 }
 
 // Экспорт для тестов (node --test) — в браузере module не определён

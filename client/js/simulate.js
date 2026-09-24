@@ -284,6 +284,25 @@ function scheduleSimulationRender() {
 }
 
 // ------------------------------------------------------------------
+// Готовит холст к отрисовке с учётом плотности пикселей экрана
+// (devicePixelRatio): на масштабе 125–200% без этого текст на canvas
+// выглядит «пиксельным и мыльным». Физический размер холста — в
+// физических пикселях (offset * dpr), а вся отрисовка ведётся в
+// CSS-пикселях как раньше — благодаря ctx.setTransform масштабируется.
+// Возвращает CSS-размеры { width, height } для рисования.
+// ------------------------------------------------------------------
+function prepareSimulationCanvas(canvas) {
+  const dpr = (window.devicePixelRatio || 1);
+  const width = canvas.offsetWidth || 640;
+  const height = canvas.offsetHeight || 420;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { width, height };
+}
+
+// ------------------------------------------------------------------
 // Главный вход: разбирает текущую модель, при необходимости
 // перестраивает панель слайдеров и перерисовывает график.
 // Вызывается при открытии вкладки «Симуляция» и после правки модели.
@@ -291,6 +310,9 @@ function scheduleSimulationRender() {
 function refreshSimulation() {
   const canvas = document.getElementById("simulation-canvas");
   if (!canvas) return;
+
+  // Размер холста (с учётом DPR) — нужен и для сообщений-подсказок
+  const { width, height } = prepareSimulationCanvas(canvas);
 
   const text = serializeEquation();
   const parsed = parseOdeSystemSafe(text);
@@ -301,6 +323,9 @@ function refreshSimulation() {
       text
         ? "Не разобрано: " + parsed.error
         : "Введите систему уравнений в разделе «Модель» — здесь появятся графики",
+      "#cbd5e1",
+      width,
+      height,
     );
     const stats = document.getElementById("sim-stats");
     if (stats) stats.textContent = "";
@@ -349,20 +374,20 @@ function renderSimulation() {
   const initial = names.map((name) => values["i:" + name] || 0);
   const tMax = values["T"] || 100;
 
-  // Размер холста под текущую панель (fallback — если секция скрыта)
-  canvas.width = canvas.offsetWidth || 640;
-  canvas.height = canvas.offsetHeight || 420;
+  // Физический размер холста под текущую панель с учётом DPR
+  // (fallback — если секция скрыта). Вся отрисовка — в CSS-пикселях.
+  const { width, height } = prepareSimulationCanvas(canvas);
 
   let result;
   try {
     const deriv = makeDerivative(names, rhsAsts, params);
     result = rk4Integrate(deriv, initial, tMax, SIM_DT);
   } catch (err) {
-    drawSimulationMessage(canvas, "Расчёт прерван: " + err.message, "#f43f5e");
+    drawSimulationMessage(canvas, "Расчёт прерван: " + err.message, "#f43f5e", width, height);
     return;
   }
 
-  drawSimulationChart(canvas, result.time, result.series, names);
+  drawSimulationChart(canvas, result.time, result.series, names, width, height);
   updateSimulationStats(names, result.time, result.series, tMax);
 }
 
@@ -412,10 +437,10 @@ function updateSimulationStats(names, time, series, tMax) {
 // кривые по цветам тем блок-схемы (compartmentColor из diagram.js)
 // с полупрозрачной заливкой под каждой кривой.
 // ------------------------------------------------------------------
-function drawSimulationChart(canvas, time, series, names) {
+function drawSimulationChart(canvas, time, series, names, width, height) {
   const ctx = canvas.getContext("2d");
-  const w = canvas.width || 640;
-  const h = canvas.height || 420;
+  const w = width || canvas.width || 640;
+  const h = height || canvas.height || 420;
 
   // Тёмный градиентный фон в тон интерфейса
   const bg = ctx.createLinearGradient(0, 0, w, h);
@@ -531,10 +556,10 @@ function drawSimulationChart(canvas, time, series, names) {
 // Сообщение на месте графика: заглушка или ошибка разбора/расчёта.
 // Переносит текст по словам, чтобы он не вылезал за края холста.
 // ------------------------------------------------------------------
-function drawSimulationMessage(canvas, text, color = "#cbd5e1") {
+function drawSimulationMessage(canvas, text, color = "#cbd5e1", width, height) {
   const ctx = canvas.getContext("2d");
-  const w = canvas.width || 640;
-  const h = canvas.height || 420;
+  const w = width || canvas.width || 640;
+  const h = height || canvas.height || 420;
 
   ctx.fillStyle = "#0b1324";
   ctx.fillRect(0, 0, w, h);
