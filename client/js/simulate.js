@@ -436,8 +436,10 @@ function updateSimulationStats(names, time, series, tMax) {
 // Рисует график динамики компартментов на холсте: сетка, оси,
 // кривые по цветам тем блок-схемы (compartmentColor из diagram.js)
 // с полупрозрачной заливкой под каждой кривой.
+// opts.points (необязательно) — наблюдаемые точки [{t, v}] поверх
+// кривых: используется параметризацией (модель против данных).
 // ------------------------------------------------------------------
-function drawSimulationChart(canvas, time, series, names, width, height) {
+function drawSimulationChart(canvas, time, series, names, width, height, opts) {
   const ctx = canvas.getContext("2d");
   const w = width || canvas.width || 640;
   const h = height || canvas.height || 420;
@@ -550,6 +552,20 @@ function drawSimulationChart(canvas, time, series, names, width, height) {
     });
     ctx.stroke();
   });
+
+  // Наблюдаемые точки данных поверх модельных кривых (если переданы):
+  // жёлтые кружки с тёмной обводкой, чтобы выделялись на сетке
+  if (opts && opts.points && opts.points.length) {
+    ctx.fillStyle = opts.pointColor || "#fbbf24";
+    ctx.strokeStyle = "#0b1324";
+    ctx.lineWidth = 1.5;
+    opts.points.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(xFor(p.t), yFor(p.v), 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
 }
 
 // ------------------------------------------------------------------

@@ -90,6 +90,8 @@ function switchSection(name) {
   // При открытии «Симуляции» пересчитываем график: модель могла
   // измениться, а панель слайдеров зависит от её параметров
   if (name === "simulation") refreshSimulation();
+  // «Параметризация» — аналогично: панель строится по текущей модели
+  if (name === "parameterization") refreshParameterization();
 }
 
 // Инициализация приложения после загрузки DOM
@@ -103,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateDiagram();
   updateParseInfo();
   initSimulation();
+  initParameterization();
 });
 
 // ------------------------------------------------------------------

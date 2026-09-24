@@ -505,37 +505,72 @@
             </div>
           </section>
 
-          <section id="section-parameterization" data-section-page class="hidden p-8 overflow-y-auto">
-            <div class="max-w-3xl mx-auto">
-              <div class="glass-card p-8">
-                <div class="flex items-center gap-4 mb-6">
-                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
-                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="4" y1="7" x2="20" y2="7" /><circle cx="9" cy="7" r="2" /><line x1="4" y1="17" x2="20" y2="17" /><circle cx="15" cy="17" r="2" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 class="font-display text-xl font-semibold text-white">Параметризация</h2>
-                    <p class="text-sm text-slate-500 mt-0.5">
-                      Оценка параметров модели (β, γ) по наблюдаемым данным
-                    </p>
-                  </div>
-                </div>
-                <p class="text-sm text-slate-400 leading-relaxed mb-6">
-                  Базовый алгоритм — метод наименьших квадратов. Альтернативный и
-                  исследовательский алгоритм — нейросеть (инверсная модель: обучается
-                  восстанавливать параметры по кривой заболеваемости на синтетических
-                  данных, которые генерирует встроенный симулятор).
+          <section id="section-parameterization" data-section-page class="hidden flex flex-col flex-1 min-h-0">
+            <div class="px-6 pt-5 pb-3 flex items-end justify-between gap-4 shrink-0">
+              <div>
+                <h2 class="font-display text-lg font-semibold text-white">Параметризация</h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  МНК (Нелдер–Мид): оценка параметров модели (β, γ, …) по наблюдаемым данным I(t)
                 </p>
-                <div class="flex flex-wrap gap-2 mb-6">
-                  <span class="chip chip-accent">МНК (базовый)</span>
-                  <span class="chip chip-accent">Нейросеть · инверсная модель</span>
-                  <span class="chip">Байесовский подход</span>
-                  <span class="chip">Эволюционные алгоритмы</span>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="chip chip-accent">МНК · базовый</span>
+                <span class="chip">Нейросеть TF.js — следующий шаг</span>
+              </div>
+            </div>
+
+            <div class="flex flex-1 min-h-0 px-6 pb-6 gap-4">
+              <!-- Левая панель: данные наблюдений и настройки подгонки -->
+              <div class="w-[340px] shrink-0 glass-card p-4 flex flex-col overflow-y-auto min-h-0">
+                <div class="flex items-center justify-between mb-1 shrink-0">
+                  <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Данные наблюдений</h3>
+                  <button
+                    onclick="fillFitExample()"
+                    title="Сгенерировать синтетические данные симулятором с шумом и сразу подогнать"
+                    class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-700/50 text-slate-300 hover:bg-emerald-500/15 hover:text-emerald-300 transition"
+                  >
+                    Пример
+                  </button>
                 </div>
-                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                  Модуль в разработке — появится после симуляции
+                <p class="text-[11px] text-slate-500 mb-1 leading-relaxed">
+                  Сколько человек болеет в каждый день наблюдений (число
+                  заражённых I, не проценты): «день число» — по одному
+                  наблюдению на строку. Пример: «3 25» = на 3-й день болеют 25.
+                </p>
+                <textarea
+                  id="fit-data"
+                  rows="8"
+                  spellcheck="false"
+                  class="w-full rounded-xl border border-slate-700 bg-ink-800/60 p-2.5 text-slate-200 font-mono text-[12px] leading-relaxed focus:outline-none focus:border-emerald-500/50 resize-none"
+                  placeholder="день  число заражённых&#10;0 100&#10;2 180&#10;5 320&#10;8 510&#10;11 640&#10;..."></textarea>
+                <div id="fit-data-hint" class="text-[11px] mt-1 min-h-[14px] text-slate-500"></div>
+
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 mt-2 shrink-0">
+                  Оцениваемые параметры
+                </h3>
+                <div id="fit-free" class="mb-2 shrink-0"></div>
+
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 shrink-0">
+                  Фиксированные
+                </h3>
+                <div id="fit-fixed" class="mb-2 shrink-0"></div>
+
+                <button
+                  onclick="runParameterFit()"
+                  class="shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-emerald-500 to-cyan-500 text-ink-950 hover:opacity-90 transition"
+                >
+                  Оценить параметры
+                </button>
+                <div id="fit-result" class="mt-3 text-[12px] text-emerald-300 leading-relaxed min-h-[20px] shrink-0"></div>
+              </div>
+
+              <!-- Правая панель: модель против данных -->
+              <div class="flex-1 glass-card p-4 flex flex-col min-w-0">
+                <div class="flex items-center justify-between gap-2 mb-2 flex-wrap shrink-0">
+                  <span class="text-sm font-semibold text-slate-300">Модель против данных</span>
+                  <span id="fit-legend" class="flex flex-wrap gap-3"></span>
                 </div>
+                <canvas id="fit-canvas" class="flex-1 w-full min-h-0 border border-slate-700/60"></canvas>
               </div>
             </div>
           </section>
@@ -653,11 +688,12 @@
       style="max-height: 50vh; overflow-y: auto"
     ></div>
 
-    <script src="./js/keyboard.js?v=18"></script>
-    <script src="./js/equations.js?v=18"></script>
-    <script src="./js/diagram.js?v=18"></script>
-    <script src="./js/parser.js?v=18"></script>
-    <script src="./js/simulate.js?v=18"></script>
-    <script src="./js/main.js?v=18"></script>
+    <script src="./js/keyboard.js?v=20"></script>
+    <script src="./js/equations.js?v=20"></script>
+    <script src="./js/diagram.js?v=20"></script>
+    <script src="./js/parser.js?v=20"></script>
+    <script src="./js/simulate.js?v=20"></script>
+    <script src="./js/fit.js?v=20"></script>
+    <script src="./js/main.js?v=20"></script>
   </body>
 </html>
