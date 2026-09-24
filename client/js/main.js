@@ -86,6 +86,10 @@ function switchSection(name) {
   document.querySelectorAll("[data-section]").forEach((button) => {
     button.classList.toggle("active", button.dataset.section === name);
   });
+
+  // При открытии «Симуляции» пересчитываем график: модель могла
+  // измениться, а панель слайдеров зависит от её параметров
+  if (name === "simulation") refreshSimulation();
 }
 
 // Инициализация приложения после загрузки DOM
@@ -97,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadSavedEquations();
   updateDiagram();
   updateParseInfo();
+  initSimulation();
 });
 
 // ------------------------------------------------------------------

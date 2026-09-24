@@ -117,6 +117,41 @@
         color: #6ee7b7;
       }
 
+      /* ---------- Слайдеры симуляции (этап 4) ---------- */
+      .sim-slider {
+        margin-bottom: 0.7rem;
+      }
+      .sim-range {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, rgba(52, 211, 153, 0.45), rgba(34, 211, 238, 0.35));
+        outline: none;
+        cursor: pointer;
+      }
+      .sim-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 15px;
+        height: 15px;
+        border-radius: 9999px;
+        background: #34d399;
+        border: 2px solid #062a1c;
+        box-shadow: 0 0 10px rgba(52, 211, 153, 0.55);
+        cursor: pointer;
+      }
+      .sim-range::-moz-range-thumb {
+        width: 15px;
+        height: 15px;
+        border-radius: 9999px;
+        background: #34d399;
+        border: 2px solid #062a1c;
+        box-shadow: 0 0 10px rgba(52, 211, 153, 0.55);
+        cursor: pointer;
+      }
+
       /* ---------- Редактор ---------- */
       #equation-input:empty::before {
         content: attr(data-placeholder);
@@ -139,6 +174,9 @@
         background:
           radial-gradient(120% 120% at 50% 0%, rgba(34, 211, 238, 0.05), transparent 60%),
           #0c1322;
+        border-radius: 1rem;
+      }
+      #simulation-canvas {
         border-radius: 1rem;
       }
 
@@ -244,9 +282,8 @@
             </span>
             <span class="flex-1 flex flex-col">
               <span class="font-semibold text-sm">Симуляция</span>
-              <span class="text-[11px] text-slate-500">графики S/I/R</span>
+              <span class="text-[11px] text-slate-500">графики · слайдеры</span>
             </span>
-            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/50 text-slate-400">скоро</span>
           </button>
 
           <button data-section="parameterization" class="nav-item">
@@ -328,12 +365,11 @@
                   placeholder="Название модели, например SIR"
                   class="w-56 bg-ink-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50"
                 />
-                <!-- Переход к следующему шагу (симуляции). Кнопка пока неактивна:
-                     включится на этапе 4, когда появится модуль симуляции -->
+                <!-- Переход к следующему шагу — симуляции (этап 4) -->
                 <button
-                  disabled
-                  title="Симуляция появится на следующем этапе разработки"
-                  class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800/60 text-slate-600 border border-slate-700/50 cursor-not-allowed select-none"
+                  onclick="switchSection('simulation')"
+                  title="Перейти к симуляции: графики S/E/I/R и ползунки параметров"
+                  class="px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-emerald-500 to-cyan-500 text-ink-950 hover:opacity-90 transition"
                 >
                   Следующий шаг →
                 </button>
@@ -414,37 +450,41 @@
             </div>
           </section>
 
-          <!-- ---- Заглушки будущих модулей (единый шаблон) ---- -->
-          <section id="section-simulation" data-section-page class="hidden p-8 overflow-y-auto">
-            <div class="max-w-3xl mx-auto">
-              <div class="glass-card p-8">
-                <div class="flex items-center gap-4 mb-6">
-                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
-                    <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="3 17 9 11 13 15 21 7" /><polyline points="15 7 21 7 21 13" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 class="font-display text-xl font-semibold text-white">Симуляция</h2>
-                    <p class="text-sm text-slate-500 mt-0.5">
-                      Численное интегрирование системы ОДУ и графики динамики компартментов
-                    </p>
-                  </div>
-                </div>
-                <p class="text-sm text-slate-400 leading-relaxed mb-6">
-                  Модуль будет запускать модель во времени с заданными параметрами
-                  и начальными условиями и строить кривые S(t), I(t), R(t).
-                  Планируется метод Рунге–Кутты 4-го порядка.
+          <!-- ---- Симуляция (этап 4): РК4, слайдеры, графики ---- -->
+          <section id="section-simulation" data-section-page class="hidden flex flex-col flex-1 min-h-0">
+            <div class="px-6 pt-5 pb-3 flex items-end justify-between gap-4 shrink-0">
+              <div>
+                <h2 class="font-display text-lg font-semibold text-white">Симуляция эпидемии</h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Рунге–Кутта 4-го порядка в браузере: двигайте ползунки — график пересчитывается мгновенно
                 </p>
-                <div class="flex flex-wrap gap-2 mb-6">
-                  <span class="chip chip-accent">Рунге–Кутта 4</span>
-                  <span class="chip">численное интегрирование</span>
-                  <span class="chip">графики S/I/R(t)</span>
-                  <span class="chip">начальные условия</span>
+              </div>
+              <span class="chip chip-accent">РК4 · dt = 0.05 дня</span>
+            </div>
+
+            <div class="flex flex-1 min-h-0 px-6 pb-6 gap-4">
+              <!-- Левая панель: слайдеры параметров, начальных условий и горизонта -->
+              <div class="w-[300px] shrink-0 glass-card p-4 flex flex-col overflow-y-auto min-h-0">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Параметры модели</h3>
+                <div id="sim-params" class="mb-4"></div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Начальные условия</h3>
+                <div id="sim-initial" class="mb-4"></div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Горизонт моделирования</h3>
+                <div id="sim-horizon"></div>
+                <div class="mt-4 pt-3 border-t border-slate-700/60 text-[11px] text-slate-500 leading-relaxed">
+                  Если в модели есть параметр N, ползунок «N» масштабирует начальные
+                  условия пропорционально. При наличии смертности µ сумма S+E+I+R убывает.
                 </div>
-                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                  Модуль в разработке — появится в следующем этапе
+              </div>
+
+              <!-- Правая панель: график -->
+              <div class="flex-1 glass-card p-4 flex flex-col min-w-0">
+                <div class="flex items-center justify-between gap-2 mb-2 flex-wrap shrink-0">
+                  <span class="text-sm font-semibold text-slate-300">Динамика компартментов</span>
+                  <span id="sim-legend" class="flex flex-wrap gap-3"></span>
                 </div>
+                <canvas id="simulation-canvas" class="flex-1 w-full min-h-0 border border-slate-700/60"></canvas>
+                <div id="sim-stats" class="text-[11px] text-slate-500 mt-2 min-h-[16px] truncate shrink-0"></div>
               </div>
             </div>
           </section>
@@ -597,10 +637,11 @@
       style="max-height: 50vh; overflow-y: auto"
     ></div>
 
-    <script src="./js/keyboard.js?v=8"></script>
-    <script src="./js/equations.js?v=8"></script>
-    <script src="./js/diagram.js?v=8"></script>
-    <script src="./js/parser.js?v=8"></script>
-    <script src="./js/main.js?v=8"></script>
+    <script src="./js/keyboard.js?v=12"></script>
+    <script src="./js/equations.js?v=12"></script>
+    <script src="./js/diagram.js?v=12"></script>
+    <script src="./js/parser.js?v=12"></script>
+    <script src="./js/simulate.js?v=12"></script>
+    <script src="./js/main.js?v=12"></script>
   </body>
 </html>
