@@ -153,6 +153,12 @@
       }
 
       /* ---------- Редактор ---------- */
+      #equation-input {
+        /* Пробелы должны сохраняться (а не схлопываться в один): это и
+           читабельность формул, и защита от скачка каретки Chromium при
+           наборе пробела в contenteditable */
+        white-space: pre-wrap;
+      }
       #equation-input:empty::before {
         content: attr(data-placeholder);
         color: #475569;
@@ -401,13 +407,23 @@
                 </div>
 
                 <!-- Область ввода уравнений -->
-                <div
-                  id="equation-input"
-                  class="min-h-[140px] border border-slate-700 rounded-xl p-3 mb-1 bg-ink-800/60 text-slate-200 focus:outline-none overflow-y-auto leading-relaxed font-mono text-[13px]"
-                  contenteditable="true"
-                  onclick="showKeyboard()"
-                  data-placeholder="dS/dt = -β * S * I / N&#10;dI/dt = β * S * I / N - γ * I&#10;dR/dt = γ * I"
-                ></div>
+                <div class="relative mb-1">
+                  <div
+                    id="equation-input"
+                    class="min-h-[140px] border border-slate-700 rounded-xl p-3 bg-ink-800/60 text-slate-200 focus:outline-none overflow-y-auto leading-relaxed font-mono text-[13px]"
+                    contenteditable="true"
+                    onclick="showKeyboard()"
+                    data-placeholder="dS/dt = -β * S * I / N&#10;dI/dt = β * S * I / N - γ * I&#10;dR/dt = γ * I"
+                  ></div>
+                  <!-- Крестик очистки: виден, только когда в редакторе есть текст -->
+                  <button
+                    id="clear-equation-btn"
+                    title="Очистить редактор"
+                    class="hidden absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-slate-700/80 border border-slate-600/60 text-slate-300 hover:bg-rose-500/80 hover:text-white hover:border-rose-400/50 transition flex items-center justify-center text-xs leading-none"
+                  >
+                    ✕
+                  </button>
+                </div>
 
                 <!-- Живой разбор системы парсером (этап 1) -->
                 <div id="parse-info" class="text-[11px] mb-3 min-h-[16px] text-slate-500"></div>
@@ -637,11 +653,11 @@
       style="max-height: 50vh; overflow-y: auto"
     ></div>
 
-    <script src="./js/keyboard.js?v=16"></script>
-    <script src="./js/equations.js?v=16"></script>
-    <script src="./js/diagram.js?v=16"></script>
-    <script src="./js/parser.js?v=16"></script>
-    <script src="./js/simulate.js?v=16"></script>
-    <script src="./js/main.js?v=16"></script>
+    <script src="./js/keyboard.js?v=18"></script>
+    <script src="./js/equations.js?v=18"></script>
+    <script src="./js/diagram.js?v=18"></script>
+    <script src="./js/parser.js?v=18"></script>
+    <script src="./js/simulate.js?v=18"></script>
+    <script src="./js/main.js?v=18"></script>
   </body>
 </html>

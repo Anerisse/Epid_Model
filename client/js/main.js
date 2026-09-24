@@ -98,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initResizablePanels();
   initDebouncedDiagram();
   initRestrictedInput();
+  initClearButton();
   loadSavedEquations();
   updateDiagram();
   updateParseInfo();
@@ -153,6 +154,16 @@ function initRestrictedInput() {
     // Обычный печатный символ: пропускаем только разрешённые
     if (!ALLOWED_INPUT_CHARS.has(e.key)) {
       e.preventDefault();
+      return;
+    }
+    // Пробел в contenteditable на Chromium страдает известным багом:
+    // каретка перескакивает в начало строки (и у нативного ввода, и у
+    // execCommand). Вставляем пробел сами — текстовым узлом и с явной
+    // установкой каретки после него (insertPlainText): позиция курсора
+    // полностью под нашим контролем.
+    if (e.key === " ") {
+      e.preventDefault();
+      insertPlainText(" ");
     }
   });
 
@@ -173,8 +184,122 @@ function initRestrictedInput() {
     updateDiagram();
   });
 
-  // Уровень 3: страховочная очистка после любых изменений
-  editor.addEventListener("input", () => cleanTextNodes());
+  // Уровень 3: страховочная очистка после любых изменений. Каретку
+  // сохраняем и восстанавливаем вокруг очистки: обычно она ничего не
+  // меняет, но если узел всё же почистится (IME, drag-and-drop),
+  // курсор не прыгнет в начало строки.
+  editor.addEventListener("input", () => {
+    const caret = captureCaret(editor);
+    cleanTextNodes();
+    restoreCaret(editor, caret);
+  });
+}
+
+// ------------------------------------------------------------------
+// Вставляет текст в редактор в позицию курсора вручную — без
+// execCommand и без браузерного ввода: вставляем текстовый узел и
+// СРАЗУ ставим каретку после него. Так позиция каретки не зависит
+// от капризов Chromium при вставке пробела в contenteditable.
+// Вызывается из обработчика пробела и пригодится для других
+// «опасных» вставок.
+// ------------------------------------------------------------------
+function insertPlainText(text) {
+  const editor = document.getElementById("equation-input");
+  editor.focus();
+  const sel = window.getSelection();
+
+  if (!sel.rangeCount) {
+    // Каретки нет — дописываем текст в конец редактора
+    editor.appendChild(document.createTextNode(text));
+    return;
+  }
+
+  // Удаляем выделение (если было) и вставляем узел в позицию курсора
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+
+  // Каретка — сразу после вставленного текста
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  // Оповещаем приложение, что содержимое изменилось (как при обычном
+  // наборе): обновятся диаграмма, разбор системы и крестик очистки
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// ------------------------------------------------------------------
+// Запоминает позицию каретки в редакторе (узел + смещение), чтобы
+// после служебных правок DOM вернуть её на место. Возвращает null,
+// если каретка вне редактора или её нет вовсе.
+// ------------------------------------------------------------------
+function captureCaret(editor) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  if (node !== editor && !editor.contains(node)) return null;
+  if (node.nodeType === Node.TEXT_NODE && range.startOffset > node.data.length) return null;
+  return { node, offset: range.startOffset };
+}
+
+// ------------------------------------------------------------------
+// Возвращает каретку в запомненную позицию (см. captureCaret).
+// Если узел каретки был удалён очисткой — ставим курсор в конец
+// редактора, это безопаснее, чем потерять фокус совсем.
+// ------------------------------------------------------------------
+function restoreCaret(editor, caret) {
+  if (!caret) return;
+  const { node, offset } = caret;
+  if (!node.isConnected || (node !== editor && !editor.contains(node))) {
+    editor.focus();
+    return;
+  }
+  const maxOffset = node.nodeType === Node.TEXT_NODE ? node.data.length : node.childNodes.length;
+  const range = document.createRange();
+  range.setStart(node, Math.min(offset, maxOffset));
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  editor.focus();
+}
+
+// ------------------------------------------------------------------
+// Крестик «✕» в правом верхнем углу редактора уравнений: очищает всё
+// его содержимое одним кликом. Виден только когда в редакторе есть
+// текст; показ/скрытие поддерживает MutationObserver, чтобы кнопка
+// реагировала на любые изменения (набор, вставка, загрузка модели).
+// ------------------------------------------------------------------
+function initClearButton() {
+  const editor = document.getElementById("equation-input");
+  const btn = document.getElementById("clear-equation-btn");
+  if (!editor || !btn) return;
+
+  const update = () => {
+    const hasText = (editor.innerText || "").trim() !== "";
+    btn.classList.toggle("hidden", !hasText);
+  };
+
+  update();
+  new MutationObserver(update).observe(editor, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+
+  // Один клик — и редактор пуст, диаграмма, разбор и симуляция обновлены
+  btn.addEventListener("click", () => {
+    editor.innerHTML = "";
+    updateDiagram();
+    updateParseInfo();
+    refreshSimulation();
+    update();
+    editor.focus();
+  });
 }
 
 // ------------------------------------------------------------------
