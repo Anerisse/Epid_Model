@@ -238,8 +238,8 @@ export function BlockDiagram({ layout }: BlockDiagramProps) {
   if (drivers.length) captionBits.push(`Влияет: ${drivers.join(" · ")}`);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0e1730]">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-2.5">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0e1730]">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-2 pt-2.5">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
           Компартменты: <span className="font-mono normal-case text-slate-200">{order.join(" · ")}</span>
         </span>
@@ -247,7 +247,7 @@ export function BlockDiagram({ layout }: BlockDiagramProps) {
           <span className="text-[11px] leading-relaxed text-slate-500">{captionBits.join("  ·  ")}</span>
         )}
       </div>
-      <svg viewBox={`0 0 ${GRID_W} ${GRID_H}`} className="block h-auto w-full" role="img" aria-label="Блок-схема модели">
+      <svg viewBox={`0 0 ${GRID_W} ${GRID_H}`} className="block min-h-0 w-full flex-1" role="img" aria-label="Блок-схема модели">
         <defs>
           <filter id="diagram-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="10" />
