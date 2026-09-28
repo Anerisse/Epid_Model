@@ -34,7 +34,7 @@ export function ModelPage() {
   } = useModel();
 
   const [notice, setNotice] = useState<string | null>(null);
-  const [keyboardOpen, setKeyboardOpen] = useState(true);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Сохранение: показывает результат (ошибку или подтверждение)
@@ -60,9 +60,9 @@ export function ModelPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label={keyboardOpen ? "Скрыть клавиатуру" : "Показать клавиатуру"}
+                aria-label="Открыть виртуальную клавиатуру"
                 title="Экранная клавиатура"
-                onClick={() => setKeyboardOpen((v) => !v)}
+                onClick={() => setKeyboardOpen(true)}
                 className={cn(keyboardOpen && "bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25")}
               >
                 <KeyboardIcon className="size-4.5" />
@@ -93,9 +93,6 @@ export function ModelPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
-            {keyboardOpen && (
-              <OnScreenKeyboard targetRef={textareaRef} onChange={setText} />
-            )}
             {notice && (
               <p className="text-xs text-emerald-300">
                 <AlertTriangle className="mr-1 inline size-3.5" />
@@ -236,6 +233,14 @@ export function ModelPage() {
           </Card>
         )}
       </div>
+
+      {/* Виртуальная клавиатура — модальное окно по центру экрана */}
+      <OnScreenKeyboard
+        open={keyboardOpen}
+        onClose={() => setKeyboardOpen(false)}
+        targetRef={textareaRef}
+        onChange={setText}
+      />
     </div>
   );
 }
