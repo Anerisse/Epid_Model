@@ -17,7 +17,7 @@ interface PlanPlaceholderProps {
 
 export function PlanPlaceholder({ title, description, icon: Icon, points, inputs, server }: PlanPlaceholderProps) {
   return (
-    <div className="grid gap-4 p-5 lg:grid-cols-2">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-2">
       <div className="space-y-4">
         <div className="flex items-start gap-3 rounded-xl border border-slate-800 bg-ink-900/70 p-5">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-800 text-slate-300 ring-1 ring-slate-700">

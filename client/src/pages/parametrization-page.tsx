@@ -113,11 +113,11 @@ export function ParametrizationPage() {
   const canRun = Boolean(structure) && dataText.trim().length > 0;
 
   return (
-    <div className="grid gap-4 p-5 xl:grid-cols-3">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
       {/* Левая колонка — данные наблюдений */}
-      <div className="space-y-4 xl:col-span-1">
+      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Наблюдения I(t)</CardTitle>
             <CardDescription>
               По строкам «день число» (первые наблюдения задают I₀). Пробел или запятая — разделители.
@@ -223,9 +223,9 @@ export function ParametrizationPage() {
       </div>
 
       {/* Правая колонка — результат */}
-      <div className="space-y-4 xl:col-span-2">
+      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Результат подгонки</CardTitle>
             <CardDescription>
               Жёлтые точки — наблюдения, красная кривая — модель с подобранными параметрами.
@@ -267,7 +267,7 @@ export function ParametrizationPage() {
         </Card>
 
         {!structure && (
-          <div className="grid h-[40vh] place-items-center rounded-xl border border-dashed border-slate-800 griddots">
+          <div className="grid h-56 place-items-center rounded-xl border border-dashed border-slate-800 griddots">
             <div className="text-center">
               <p className="text-sm font-semibold text-slate-400">Раздел «Параметризация»</p>
               <p className="mt-1 text-xs text-slate-500">

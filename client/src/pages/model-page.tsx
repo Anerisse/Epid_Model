@@ -1,18 +1,21 @@
 // ============================================================
 // pages/model-page.tsx — раздел «Модель»: редактор системы ОДУ,
-// авто-блок-схема, сохранение/загрузка/удаление моделей.
-// Разбор выполняется на сервере (формируется в ModelContext).
+// экранная клавиатура (греческие буквы), авто-блок-схема,
+// сохранение/загрузка/удаление моделей. Страница в один экран:
+// колонки скроллятся внутри, а не всей страницей.
 // ============================================================
-import { useState } from "react";
-import { Save, Trash2, FolderOpen, AlertTriangle } from "lucide-react";
+import { useRef, useState } from "react";
+import { Keyboard as KeyboardIcon, Save, Trash2, FolderOpen, AlertTriangle } from "lucide-react";
 import { useModel } from "../lib/model-context";
 import { BlockDiagram } from "../components/block-diagram";
+import { OnScreenKeyboard } from "../components/on-screen-keyboard";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Separator } from "../components/ui/separator";
+import { cn } from "../lib/utils";
 
 export function ModelPage() {
   const {
@@ -31,6 +34,8 @@ export function ModelPage() {
   } = useModel();
 
   const [notice, setNotice] = useState<string | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Сохранение: показывает результат (ошибку или подтверждение)
   const handleSave = async () => {
@@ -40,16 +45,29 @@ export function ModelPage() {
   };
 
   return (
-    <div className="grid gap-4 p-5 xl:grid-cols-3">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(380px,440px)_1fr] xl:overflow-hidden">
       {/* Левая колонка: редактор + список сохранённых */}
-      <div className="space-y-4 xl:col-span-1">
+      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         <Card>
-          <CardHeader>
-            <CardTitle>Система ОДУ</CardTitle>
-            <CardDescription>
-              Уравнения вида dX/dt = … или X' = …; греческие буквы и английские алиасы (beta → β)
-              распознаются автоматически.
-            </CardDescription>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle>Система ОДУ</CardTitle>
+                <CardDescription>
+                  dX/dt = … или X' = …; греческие буквы и алиасы (beta → β) распознаются автоматически.
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={keyboardOpen ? "Скрыть клавиатуру" : "Показать клавиатуру"}
+                title="Экранная клавиатура"
+                onClick={() => setKeyboardOpen((v) => !v)}
+                className={cn(keyboardOpen && "bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25")}
+              >
+                <KeyboardIcon className="size-4.5" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-2">
@@ -69,11 +87,15 @@ export function ModelPage() {
               </Button>
             </div>
             <Textarea
-              rows={12}
-              placeholder={"dS/dt = -β*S*I/N\ndI/dt = β*S*I/N - γ*I\ndR/dt = γ*I"}
+              ref={textareaRef}
+              rows={7}
+              placeholder={"dS/dt = -β*S*I/N\ndE/dt = β*S*I/N - σ*E\ndI/dt = σ*E - γ*I\ndR/dt = γ*I"}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
+            {keyboardOpen && (
+              <OnScreenKeyboard targetRef={textareaRef} onChange={setText} />
+            )}
             {notice && (
               <p className="text-xs text-emerald-300">
                 <AlertTriangle className="mr-1 inline size-3.5" />
@@ -89,7 +111,7 @@ export function ModelPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Сохранённые модели</CardTitle>
             <CardDescription>
               Выберите модель — она загрузится в редактор, симуляцию и параметризацию.
@@ -139,9 +161,9 @@ export function ModelPage() {
       </div>
 
       {/* Правая колонка: структура + блок-схема */}
-      <div className="space-y-4 xl:col-span-2">
+      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Структура модели</CardTitle>
             <CardDescription>
               Компартменты, параметры и потоки, выделенные парсером на сервере.
