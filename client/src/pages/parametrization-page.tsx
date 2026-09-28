@@ -14,10 +14,47 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
 import { Label } from "../components/ui/label";
+import { Select } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 
 const DEFAULT_POPULATION = 10000;
 const FREE_DEFAULT = ["β", "γ"];
+
+// Доступные методы оценки параметров. Базовый — МНК (Нелдер–Мид):
+// он реализован на сервере. Остальные — план развития раздела,
+// меню показывает расширяемость (по одному алгоритму на этап -> больше).
+interface FitMethod {
+  id: string;
+  name: string;
+  desc: string;
+  base: boolean;
+}
+const FIT_METHODS: FitMethod[] = [
+  {
+    id: "least-squares",
+    name: "МНК · Нелдер–Мид",
+    desc: "Базовый: минимум суммы квадратов отклонений модели от данных.",
+    base: true,
+  },
+  {
+    id: "lbfgs",
+    name: "Градиентный спуск (L-BFGS)",
+    desc: "Та же функция потерь, оптимизация через градиент.",
+    base: false,
+  },
+  {
+    id: "mcmc",
+    name: "Байесовская оценка (MCMC)",
+    desc: "Апостериорное распределение параметров и доверительные интервалы.",
+    base: false,
+  },
+  {
+    id: "neural",
+    name: "Нейросеть · инверсное моделирование",
+    desc: "TensorFlow.js в браузере: обучается на синтетике симулятора.",
+    base: false,
+  },
+];
 
 function fmt(v: number | undefined | null): string {
   if (v === undefined || v === null || !isFinite(v)) return "—";
@@ -34,6 +71,7 @@ export function ParametrizationPage() {
   }, [structure]);
 
   const [dataText, setDataText] = useState("");
+  const [method, setMethod] = useState<string>(FIT_METHODS[0].id);
   const [free, setFree] = useState<string[]>(FREE_DEFAULT);
   const [fixed, setFixed] = useState<Record<string, number>>({});
   const [N, setN] = useState(DEFAULT_POPULATION);
@@ -114,8 +152,46 @@ export function ParametrizationPage() {
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
-      {/* Левая колонка — данные наблюдений */}
+      {/* Левая колонка — метод, данные, параметры */}
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
+        {/* Метод оценивания: базовый МНК + план других методов */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Метод оценивания</CardTitle>
+            <CardDescription>
+              База — МНК (Нелдер–Мид). Список показывает, какие методы планируется добавить в раздел.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="fit-method" className="shrink-0 text-xs font-semibold text-slate-300">
+                Метод
+              </Label>
+              <Select
+                id="fit-method"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                aria-label="Метод оценки параметров"
+              >
+                {FIT_METHODS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.base ? "МНК · Нелдер–Мид (базовый)" : `${m.name} (план)`}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <p className="text-[11px] leading-snug text-slate-500">
+              {FIT_METHODS.find((m) => m.id === method)?.desc}
+            </p>
+            {method !== "least-squares" && (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+                «{FIT_METHODS.find((m) => m.id === method)?.name ?? ""}» в плане разработки — оценка
+                выполняется базовым методом МНК.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Наблюдения I(t)</CardTitle>
@@ -256,6 +332,10 @@ export function ParametrizationPage() {
                     </p>
                   </div>
                 </div>
+                <p className="text-[11px] text-slate-500">
+                  Метод оценивания:{" "}
+                  {FIT_METHODS.find((m) => m.id === method)?.name ?? "МНК · Нелдер–Мид"}
+                </p>
                 <FitChart time={result.time} model={result.model} points={result.points} />
               </>
             ) : (
