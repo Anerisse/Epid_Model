@@ -1,12 +1,13 @@
 // ============================================================
 // components/on-screen-keyboard.tsx — виртуальная клавиатура
 // для ввода уравнений ОДУ (порт legacy/client/js/keyboard.js).
-// Открывается ПО ЦЕНТРУ ЭКРАНА модальным окном поверх контента:
-// греческие буквы (параметры), латинские заглавные (компартменты),
-// цифры, операторы, шаблоны dX/dt и ∂X/∂t. Вставка — в позицию
-// курсора textarea (или в конец выделенного фрагмента).
+// Плавающая панель у НИЖНЕГО края экрана по центру горизонтали
+// (fixed bottom, как было до переезда): единая панель без вкладок —
+// «Ввод» (шаблоны d□/dt, ∂□/∂t + цифры/операторы), латинские
+// заглавные (компартменты), греческие (параметры), символы.
+// Вставка — в позицию курсора textarea (или конец выделения).
 // ============================================================
-import { useEffect, type RefObject } from "react";
+import type { RefObject } from "react";
 import { X } from "lucide-react";
 
 // Греческие буквы (параметры моделей: β, γ, δ, …)
@@ -35,9 +36,9 @@ const BASIC_SYMBOLS = [
 ];
 
 interface OnScreenKeyboardProps {
-  // Открыта ли клавиатура (модальное окно по центру экрана)
+  // Открыта ли клавиатура (плавающая панель у нижнего края)
   open: boolean;
-  // Закрыть клавиатуру (Escape, кнопка или клик по фону)
+  // Закрыть клавиатуру (кнопка в шапке панели или переключатель)
   onClose: () => void;
   // Ссылка на textarea, в которую вставляются символы
   targetRef: RefObject<HTMLTextAreaElement | null>;
@@ -60,16 +61,6 @@ const KEY_CLASS =
   "hover:border-emerald-500/40 hover:bg-emerald-500/15 hover:text-emerald-300 active:scale-95";
 
 export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScreenKeyboardProps) {
-  // Закрытие по Escape
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   // Вставить символ в позицию курсора textarea и вернуть курсор
@@ -88,8 +79,8 @@ export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScree
     });
   };
 
-  // Вставка шаблона производной: выделенную переменную подставляет
-  // в dX/dt или ∂X/∂t, иначе — символ-заглушку S
+  // Вставка шаблона производной: выделенную переменную подставляем
+  // в dX/dt или ∂X/∂t, иначе — символ-заглушку X (как legacy d□)
   const insertTemplate = (template: (variable: string) => string) => {
     const el = targetRef.current;
     if (!el) return;
@@ -97,7 +88,7 @@ export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScree
     const end = el.selectionEnd ?? 0;
     const value = el.value ?? "";
     const selection = value.slice(start, end).trim();
-    const variable = /^[A-Za-zΑ-Ωα-ω\d]+$/.test(selection) ? selection : "S";
+    const variable = /^[A-Za-zΑ-Ωα-ω\d]+$/.test(selection) ? selection : "X";
     const term = template(variable);
     const next = value.slice(0, start) + term + value.slice(end);
     onChange(next);
@@ -110,6 +101,22 @@ export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScree
 
   const insertDerivative = () => insertTemplate((v) => `d${v}/dt`);
   const insertPartial = () => insertTemplate((v) => `∂${v}/∂t`);
+
+  // Кнопка дроби dX/dt (вид «вертикальной дроби», как в legacy)
+  const FractionButton = ({ top, bottom, onClick, title }: { top: string; bottom: string; onClick: () => void; title: string }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="flex h-14 shrink-0 items-center justify-center rounded-xl border border-slate-600/50 bg-slate-700/50 px-5 transition hover:border-emerald-500/40 hover:bg-emerald-500/15 active:scale-95"
+    >
+      <span className="inline-flex flex-col items-center text-slate-200">
+        <span className="text-sm">{top}</span>
+        <span className="my-0.5 w-full border-t border-slate-400" />
+        <span className="text-sm">{bottom}</span>
+      </span>
+    </button>
+  );
 
   // Плиточная сетка кнопок символов
   const symbolGrid = (keys: string[]) => (
@@ -128,24 +135,18 @@ export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScree
     </div>
   );
 
-  // Затемнённый фон по центру экрана; клик по фону закрывает окно
   return (
+    // Плавающая панель: прижата к низу экрана по центру, max-height 50vh
     <div
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
+      className="fixed bottom-4 left-1/2 z-40 w-[min(1240px,calc(100vw-1.5rem))] -translate-x-1/2 select-none overflow-y-auto rounded-2xl border border-slate-600/50 bg-ink-800/95 shadow-2xl backdrop-blur-md"
+      style={{ maxHeight: "50vh" }}
       role="dialog"
-      aria-modal="true"
       aria-label="Виртуальная клавиатура"
     >
-      <div
-        className="w-full max-w-2xl select-none rounded-2xl border border-slate-700 bg-ink-900 shadow-2xl shadow-black/50"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-          <div>
-            <span className="text-sm font-bold text-slate-100">Виртуальная клавиатура</span>
-            <span className="ml-2 text-[10px] text-slate-500">вставка в позицию курсора</span>
-          </div>
+      <div className="space-y-3 p-4">
+        {/* Шапка панели */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-slate-200">Виртуальная клавиатура</span>
           <button
             type="button"
             onClick={onClose}
@@ -155,47 +156,40 @@ export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScree
           </button>
         </div>
 
-        <div className="max-h-[75dvh] space-y-2.5 overflow-y-auto p-4">
-          {/* Ввод: шаблоны производных + цифры и операторы */}
-          <SectionLabel>Ввод</SectionLabel>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex shrink-0 gap-1.5">
-              <button
-                type="button"
+        {/* Ввод: слева шаблоны производных, справа цифры и операторы */}
+        <SectionLabel>Ввод</SectionLabel>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="shrink-0 space-y-1">
+            <div className="flex gap-2">
+              <FractionButton
+                top="dX"
+                bottom="dt"
                 onClick={insertDerivative}
-                className="flex h-10 items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-700/50 px-3 text-sm text-slate-200 transition hover:border-emerald-500/40 hover:bg-emerald-500/15 active:scale-95"
                 title="Вставить dX/dt (выделите переменную заранее)"
-              >
-                d<span className="italic">X</span>/dt
-              </button>
-              <button
-                type="button"
+              />
+              <FractionButton
+                top="∂X"
+                bottom="∂t"
                 onClick={insertPartial}
-                className="flex h-10 items-center gap-1 rounded-lg border border-slate-600/50 bg-slate-700/50 px-3 text-sm text-slate-200 transition hover:border-emerald-500/40 hover:bg-emerald-500/15 active:scale-95"
                 title="Вставить ∂X/∂t (выделите переменную заранее)"
-              >
-                ∂<span className="italic">X</span>/∂t
-              </button>
+              />
             </div>
-            <div className="min-w-[260px] flex-1">{symbolGrid([...NUMBERS, ...OPERATORS])}</div>
+            <div className="px-1 text-[10px] text-slate-500">Выделите переменную перед вставкой</div>
           </div>
-
-          {/* Латинские заглавные — компартменты */}
-          <SectionLabel>Латинские · компартменты</SectionLabel>
-          {symbolGrid(ENGLISH_LETTERS)}
-
-          {/* Греческие — параметры */}
-          <SectionLabel>Греческие · параметры</SectionLabel>
-          {symbolGrid(GREEK_LETTERS)}
-
-          {/* Символы */}
-          <SectionLabel>Символы</SectionLabel>
-          {symbolGrid(BASIC_SYMBOLS)}
+          <div className="min-w-[280px] flex-1">{symbolGrid([...NUMBERS, ...OPERATORS])}</div>
         </div>
 
-        <div className="border-t border-slate-800 px-4 py-2 text-[10px] text-slate-500">
-          Шаблоны dX/dt и ∂X/∂t подставляют выделенную переменную (по умолчанию — S). Escape — закрыть.
-        </div>
+        {/* Латинские заглавные — компартменты */}
+        <SectionLabel>Латинские · компартменты</SectionLabel>
+        {symbolGrid(ENGLISH_LETTERS)}
+
+        {/* Греческие — параметры */}
+        <SectionLabel>Греческие · параметры</SectionLabel>
+        {symbolGrid(GREEK_LETTERS)}
+
+        {/* Символы */}
+        <SectionLabel>Символы</SectionLabel>
+        {symbolGrid(BASIC_SYMBOLS)}
       </div>
     </div>
   );

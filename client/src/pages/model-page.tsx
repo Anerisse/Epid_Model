@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import { Separator } from "../components/ui/separator";
 import { cn } from "../lib/utils";
 
 export function ModelPage() {
@@ -50,24 +49,10 @@ export function ModelPage() {
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <CardTitle>Система ОДУ</CardTitle>
-                <CardDescription>
-                  dX/dt = … или X' = …; греческие буквы и алиасы (beta → β) распознаются автоматически.
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Открыть виртуальную клавиатуру"
-                title="Экранная клавиатура"
-                onClick={() => setKeyboardOpen(true)}
-                className={cn(keyboardOpen && "bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25")}
-              >
-                <KeyboardIcon className="size-4.5" />
-              </Button>
-            </div>
+            <CardTitle>Система ОДУ</CardTitle>
+            <CardDescription>
+              dX/dt = … или X' = …; греческие буквы и алиасы (beta → β) распознаются автоматически.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-2">
@@ -93,6 +78,21 @@ export function ModelPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
+            {/* Кнопка виртуальной клавиатуры (как в legacy) */}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label={keyboardOpen ? "Скрыть виртуальную клавиатуру" : "Показать виртуальную клавиатуру"}
+                onClick={() => setKeyboardOpen((v) => !v)}
+                className={cn(keyboardOpen && "border-emerald-500/40 bg-emerald-500/10 text-emerald-300")}
+              >
+                <KeyboardIcon className="size-4" /> Виртуальная клавиатура
+              </Button>
+              <span className="hidden text-[10px] text-slate-500 sm:block">
+                греческие буквы, компартменты, dX/dt
+              </span>
+            </div>
             {notice && (
               <p className="text-xs text-emerald-300">
                 <AlertTriangle className="mr-1 inline size-3.5" />
@@ -157,51 +157,60 @@ export function ModelPage() {
         </Card>
       </div>
 
-      {/* Правая колонка: структура + блок-схема */}
-      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
-        <Card>
-          <CardHeader className="pb-2">
+      {/* Правая колонка: структура + блок-схема. Схема заполняет
+      оставшееся после структуры место (flex-1), не выходя за границы */}
+      <div className="flex min-h-0 flex-col gap-3 pr-1 xl:overflow-hidden">
+        <Card className="shrink-0">
+          <CardHeader className="pb-1">
             <CardTitle>Структура модели</CardTitle>
-            <CardDescription>
-              Компартменты, параметры и потоки, выделенные парсером на сервере.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             {structure ? (
               <>
-                <div>
-                  <Label>Компартменты</Label>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {structure.compartments.map((c) => (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Компартменты
+                  </span>
+                  {structure.compartments.map((c) => (
+                    <span
+                      key={c.name}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-ink-800 px-2 py-0.5 text-[11px] font-mono font-semibold text-slate-100"
+                    >
                       <span
-                        key={c.name}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-ink-800 px-2.5 py-1 text-xs font-mono font-semibold text-slate-100"
-                      >
-                        <span
-                          className="size-2.5 rounded-full"
-                          style={{ backgroundColor: diagram?.colors[c.name] ?? "#94a3b8" }}
-                        />
-                        {c.name}
-                      </span>
-                    ))}
-                  </div>
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: diagram?.colors[c.name] ?? "#94a3b8" }}
+                      />
+                      {c.name}
+                    </span>
+                  ))}
                 </div>
-                <div>
-                  <Label>Параметры</Label>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {structure.parameters.map((p) => (
-                      <span
-                        key={p}
-                        className="inline-flex items-center rounded-full bg-slate-800 px-2.5 py-1 text-xs font-mono text-slate-300"
-                      >
-                        {p}
-                      </span>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Параметры
+                  </span>
+                  {structure.parameters.map((p) => (
+                    <span
+                      key={p}
+                      className="inline-flex items-center rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-mono text-slate-300"
+                    >
+                      {p}
+                    </span>
+                  ))}
                 </div>
-                <div>
-                  <Label>Потоки</Label>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                <div className="flex items-start gap-2">
+                  <span className="pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Потоки
+                  </span>
+                  <p
+                    className="min-w-0 flex-1 truncate text-[11px] leading-relaxed text-slate-400"
+                    title={
+                      structure.flows.length === 0
+                        ? "Потоки между компартментами не найдены."
+                        : structure.flows
+                            .map((f) => (f.to ? `${f.from} → ${f.to} (${f.label})` : `потеря ${f.from} (${f.label})`))
+                            .join("  ·  ")
+                    }
+                  >
                     {structure.flows.length === 0
                       ? "Потоки между компартментами не найдены."
                       : structure.flows
@@ -218,12 +227,12 @@ export function ModelPage() {
           </CardContent>
         </Card>
 
-        <Separator />
-
         {diagram ? (
-          <div>
-            <p className="mb-2 text-sm font-semibold text-slate-300">Авто-блок-схема</p>
-            <BlockDiagram layout={diagram} />
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+            <p className="shrink-0 text-sm font-semibold text-slate-300">Авто-блок-схема</p>
+            <div className="min-h-0 flex-1">
+              <BlockDiagram layout={diagram} />
+            </div>
           </div>
         ) : (
           <Card>
@@ -234,7 +243,7 @@ export function ModelPage() {
         )}
       </div>
 
-      {/* Виртуальная клавиатура — модальное окно по центру экрана */}
+      {/* Виртуальная клавиатура — плавающая панель у нижнего края экрана */}
       <OnScreenKeyboard
         open={keyboardOpen}
         onClose={() => setKeyboardOpen(false)}
