@@ -331,6 +331,8 @@ function refreshSimulation() {
     if (stats) stats.textContent = "";
     const legend = document.getElementById("sim-legend");
     if (legend) legend.innerHTML = "";
+    const analysis = document.getElementById("sim-analysis");
+    if (analysis) analysis.innerHTML = "";
     return;
   }
 
@@ -383,12 +385,15 @@ function renderSimulation() {
     const deriv = makeDerivative(names, rhsAsts, params);
     result = rk4Integrate(deriv, initial, tMax, SIM_DT);
   } catch (err) {
+    const box = document.getElementById("sim-analysis");
+    if (box) box.innerHTML = "";
     drawSimulationMessage(canvas, "Расчёт прерван: " + err.message, "#f43f5e", width, height);
     return;
   }
 
   drawSimulationChart(canvas, result.time, result.series, names, width, height);
   updateSimulationStats(names, result.time, result.series, tMax);
+  renderQualitativeAnalysis(s, params, initial, result);
 }
 
 // ------------------------------------------------------------------
@@ -617,6 +622,106 @@ function initSimulation() {
   });
 }
 
+// ------------------------------------------------------------------
+// Блок «Качественный анализ» над графиком: R₀ (универсально, методом
+// матрицы следующего поколения), порог 1/R₀, итог переболевших из
+// 1−x = e^(−R₀·x), проверка сохранения популяции. Обновляется вместе
+// с графиком при движении слайдеров. Если автоматический вывод не
+// сработал — пользователь задаёт формулу R₀ вручную через параметры.
+// ------------------------------------------------------------------
+function renderQualitativeAnalysis(structure, params, initial, result) {
+  const box = document.getElementById("sim-analysis");
+  if (!box) return;
+
+  const N = params["N"] || initial.reduce((s, v) => s + v, 0) || DEFAULT_POPULATION;
+  const manual = (simState.values["r0formula"] || "").trim();
+  const cls = classifyCompartments(structure);
+  const infectedPart = cls.infected.join(", ") || "—";
+
+  let head, r0, source;
+  if (manual) {
+    const m = computeR0Manual(manual, params);
+    if (m.ok) {
+      r0 = m.r0;
+      head = "вручную";
+      source = `R₀ = ${manual}`;
+    } else {
+      head = `Ошибка формулы: ${m.error}`;
+      source = "формула";
+    }
+  } else {
+    const a = computeR0NGM(structure, params, N);
+    if (a.ok) {
+      r0 = a.r0;
+      head = "авто";
+      source = `R₀ по NGM · заражённые: ${infectedPart}`;
+    } else {
+      head = a.error;
+      source = "можно задать формулой вручную";
+    }
+  }
+
+  const hasR0 = typeof r0 === "number" && Number.isFinite(r0);
+  const verdict = hasR0
+    ? r0 < 1
+      ? ["затухает", "emerald"]
+      : r0 > 1
+        ? ["вспышка возможна", "amber"]
+        : ["на границе", "slate"]
+    : ["—", "slate"];
+
+  // Сохранение популяции: сравнение суммы компартментов в конце с началом
+  let cons = "—";
+  if (result && result.series) {
+    const s0 = initial.reduce((a, b) => a + b, 0);
+    const sEnd = result.series.reduce((a, ser) => a + ser[ser.length - 1], 0);
+    const dev = s0 > 0 ? Math.abs(sEnd - s0) / s0 : 0;
+    cons = dev < 0.01 ? "сохраняется (≈ N)" : "убывает (есть смертность/уход)";
+  }
+
+  const r0html = hasR0
+    ? `<span class="text-2xl font-display font-bold text-${verdict[1]}-400">${fmtValue(r0)}</span>`
+    : `<span class="text-slate-400 text-sm">не определён</span>`;
+  const thr = hasR0 && r0 > 0 ? `${fmtValue(1 / r0)}` : "—";
+  const fin = hasR0 ? (r0 > 1 ? Math.round(finalSizeFromR0(r0) * N) : 0) : "—";
+
+  box.innerHTML = `
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 rounded-xl border border-slate-700/60 bg-ink-800/40 mb-2 text-[12px]">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 font-medium">R₀</span>
+        ${r0html}
+        <span class="text-${verdict[1]}-300 font-medium">· ${verdict[0]}</span>
+        <span class="text-slate-500">(${escAttr(head)})</span>
+      </div>
+      <div class="text-slate-300">порог S/N &gt; <b>1/R₀ = ${thr}</b></div>
+      <div class="text-slate-300">переболеет ≈ <b>${fin}</b> из ${fmtValue(N)}</div>
+      <div class="text-slate-300">популяция: <b>${cons}</b></div>
+      <div class="flex-1 min-w-[120px]" title="${escAttr(source)}">
+        <input
+          id="sim-r0-manual"
+          class="w-full rounded-lg border border-slate-700 bg-ink-900/70 px-2 py-1 text-slate-200 font-mono text-[11px] focus:outline-none focus:border-emerald-500/50"
+          placeholder="R₀ вручную, напр. β/γ"
+          value="${escAttr(simState.values["r0formula"] || "")}">
+      </div>
+    </div>`;
+
+  const input = box.querySelector("#sim-r0-manual");
+  if (input) {
+    input.addEventListener("input", () => {
+      simState.values["r0formula"] = input.value;
+      renderQualitativeAnalysis(structure, params, initial, result);
+    });
+  }
+}
+
+// Экранирование значения для атрибута (в формуле могут быть кавычки)
+function escAttr(v) {
+  return String(v || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
 // Защитный выход для запуска под Node (node --test)
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
@@ -624,7 +729,7 @@ if (typeof module !== "undefined" && module.exports) {
     makeDerivative,
     rk4Integrate,
     defaultInitial,
-    // DOM-функции экспортируются для Node-стенда (в браузере это глобальные функции)
+    renderQualitativeAnalysis,
     refreshSimulation,
     renderSimulation,
     drawSimulationChart,
