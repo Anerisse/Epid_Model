@@ -120,9 +120,26 @@ export function SimulationPage() {
   const canSimulate = Boolean(structure) && Object.keys(paramValues).length > 0;
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(320px,400px)_1fr] xl:overflow-hidden">
-      {/* Левая колонка — управление */}
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(360px,430px)_1fr] xl:overflow-hidden">
+      {/* Левая колонка: качественный анализ сверху, параметры ниже */}
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
+        {/* Качественный анализ — вверху, над параметрами */}
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle>Качественный анализ</CardTitle>
+            <CardDescription>
+              R₀ методом следующего поколения (NGM) или ручной формулой.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AnalysisPanel
+              analysis={result?.analysis ?? null}
+              manualFormula={manualFormula}
+              onManualFormula={setManualFormula}
+            />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -200,10 +217,11 @@ export function SimulationPage() {
         </Card>
       </div>
 
-      {/* Правая колонка — графики и анализ */}
-      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
-        <Card>
-          <CardHeader>
+      {/* Правая колонка — графики и анализ. График заполняет свободное
+          место (flex-1), внизу статичная строка «Статистика + Анализ» */}
+      <div className="flex min-h-0 flex-col gap-4 pr-1 xl:overflow-hidden">
+        <Card className="flex min-h-[300px] flex-1 flex-col">
+          <CardHeader className="pb-1">
             <CardTitle className="flex items-center gap-2">
               Кривые эпидемии
               {pending && <Loader2 className="size-4 animate-spin text-emerald-300" />}
@@ -212,7 +230,7 @@ export function SimulationPage() {
               {result ? `${result.stats.steps} шагов РК4` : "Симуляция ещё не выполнена."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1">
             {error ? (
               <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
                 {error}
@@ -225,7 +243,7 @@ export function SimulationPage() {
                 colors={result.colors}
               />
             ) : (
-              <div className="grid h-[360px] place-items-center rounded-lg border border-dashed border-slate-800 text-sm text-slate-500">
+              <div className="grid h-full min-h-[260px] place-items-center rounded-lg border border-dashed border-slate-800 text-sm text-slate-500">
                 Настройте параметры — здесь появится график
               </div>
             )}
@@ -233,51 +251,29 @@ export function SimulationPage() {
         </Card>
 
         {result && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Статистика: пик и выздоровевшие */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Статистика</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">Пик I</p>
-                  <p className="font-mono text-sm text-slate-100">
-                    {result.stats.peakValue !== null ? fmt(result.stats.peakValue) : "—"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">День пика</p>
-                  <p className="font-mono text-sm text-slate-100">
-                    {result.stats.peakDay !== null ? `${fmt(result.stats.peakDay)} дн.` : "—"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">Выздоровели</p>
-                  <p className="font-mono text-sm text-slate-100">
-                    {result.stats.recovered !== null ? fmt(result.stats.recovered) : "—"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Качественный анализ */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Качественный анализ</CardTitle>
-                <CardDescription>
-                  R₀ методом следующего поколения (NGM) или ручной формулой.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AnalysisPanel
-                  analysis={result.analysis}
-                  manualFormula={manualFormula}
-                  onManualFormula={setManualFormula}
-                />
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="shrink-0">
+            {/* Статистика — плоская полоса: три показателя в ряд */}
+            <CardContent className="flex items-stretch divide-x divide-slate-800 text-center">
+              <div className="flex-1 px-2 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Пик I</p>
+                <p className="font-mono text-sm text-slate-100">
+                  {result.stats.peakValue !== null ? fmt(result.stats.peakValue) : "—"}
+                </p>
+              </div>
+              <div className="flex-1 px-2 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">День пика</p>
+                <p className="font-mono text-sm text-slate-100">
+                  {result.stats.peakDay !== null ? `${fmt(result.stats.peakDay)} дн.` : "—"}
+                </p>
+              </div>
+              <div className="flex-1 px-2 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Выздоровели</p>
+                <p className="font-mono text-sm text-slate-100">
+                  {result.stats.recovered !== null ? fmt(result.stats.recovered) : "—"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {!structure && (

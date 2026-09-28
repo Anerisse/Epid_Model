@@ -57,7 +57,7 @@ export function SimulationChart({ time, series, names, colors }: SimulationChart
   );
 
   return (
-    <div className="h-[360px] w-full">
+    <div className="h-full min-h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
           <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
