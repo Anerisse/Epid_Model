@@ -638,7 +638,7 @@ function renderQualitativeAnalysis(structure, params, initial, result) {
   const cls = classifyCompartments(structure);
   const infectedPart = cls.infected.join(", ") || "—";
 
-  let head, r0, source;
+  let head, r0, source, eq = null;
   if (manual) {
     const m = computeR0Manual(manual, params);
     if (m.ok) {
@@ -653,8 +653,9 @@ function renderQualitativeAnalysis(structure, params, initial, result) {
     const a = computeR0NGM(structure, params, N);
     if (a.ok) {
       r0 = a.r0;
+      eq = a.eq || null;
       head = "авто";
-      source = `R₀ по NGM · заражённые: ${infectedPart}`;
+      source = `${eq && eq.formula ? `R₀ = ${eq.formula} · ` : ""}заражённые: ${infectedPart}`;
     } else {
       head = a.error;
       source = "можно задать формулой вручную";
@@ -682,13 +683,49 @@ function renderQualitativeAnalysis(structure, params, initial, result) {
   const r0html = hasR0
     ? `<span class="text-2xl font-display font-bold text-${verdict[1]}-400">${fmtValue(r0)}</span>`
     : `<span class="text-slate-400 text-sm">не определён</span>`;
+  // Автоматическое «уравнение R₀» (например β/γ) — слева от числа
+  const formulaHtml =
+    eq && eq.formula
+      ? `<span class="font-mono text-[13px] text-cyan-300 whitespace-nowrap">${escAttr(prettyFormula(eq.formula))}</span>
+         <span class="text-slate-500"> =&nbsp;</span>`
+      : "";
   const thr = hasR0 && r0 > 0 ? `${fmtValue(1 / r0)}` : "—";
   const fin = hasR0 ? (r0 > 1 ? Math.round(finalSizeFromR0(r0) * N) : 0) : "—";
 
+  // Раскрывающийся блок «Вывод R₀»: F (новые заражения) и V (переходы)
+  // по каждому заражённому компартменту; если формулы нет — матрицы F/V.
+  let detailsHtml = "";
+  if (eq) {
+    if (eq.infText) {
+      const rows = cls.infected
+        .map((nm, i) => {
+          const f = prettyFormula(eq.infText[i]) || "—";
+          const v = prettyFormula(eq.restText[i]) || "—";
+          return `<div><span class="text-slate-500">${escAttr(nm)}:</span> F = <span class="text-emerald-300/90">${escAttr(f)}</span> &nbsp;·&nbsp; V = <span class="text-rose-300/90">${escAttr(v)}</span></div>`;
+        })
+        .join("");
+      detailsHtml = `<details class="mt-1.5 text-[11px] leading-relaxed text-slate-400 select-none">
+        <summary class="cursor-pointer hover:text-slate-200">Вывод R₀: F (новые заражения) и V (переходы из заражённых)</summary>
+        <div class="mt-1 font-mono space-y-0.5">${rows}</div>
+      </details>`;
+    } else if (eq.Fm) {
+      const mat = (m) =>
+        "[" + m.map((row) => "[" + row.map((x) => prettyFormula(x)).join(", ") + "]").join(", ") + "]";
+      detailsHtml = `<details class="mt-1.5 text-[11px] leading-relaxed text-slate-400 select-none">
+        <summary class="cursor-pointer hover:text-slate-200">Вывод R₀: матрицы F и V (R₀ = ρ(F·V⁻¹))</summary>
+        <div class="mt-1 font-mono space-y-0.5">
+          <div>F = ${escAttr(mat(eq.Fm))}</div>
+          <div>V = ${escAttr(mat(eq.Vm))}</div>
+        </div>
+      </details>`;
+    }
+  }
+
   box.innerHTML = `
-    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 rounded-xl border border-slate-700/60 bg-ink-800/40 mb-2 text-[12px]">
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 rounded-xl border border-slate-700/60 bg-ink-800/40 mb-1 text-[12px]">
       <div class="flex items-center gap-2">
         <span class="text-slate-400 font-medium">R₀</span>
+        ${formulaHtml}
         ${r0html}
         <span class="text-${verdict[1]}-300 font-medium">· ${verdict[0]}</span>
         <span class="text-slate-500">(${escAttr(head)})</span>
@@ -703,7 +740,8 @@ function renderQualitativeAnalysis(structure, params, initial, result) {
           placeholder="R₀ вручную, напр. β/γ"
           value="${escAttr(simState.values["r0formula"] || "")}">
       </div>
-    </div>`;
+    </div>
+    ${detailsHtml}`;
 
   const input = box.querySelector("#sim-r0-manual");
   if (input) {
@@ -712,6 +750,11 @@ function renderQualitativeAnalysis(structure, params, initial, result) {
       renderQualitativeAnalysis(structure, params, initial, result);
     });
   }
+}
+
+// Читаемая формула: «*» → «·» (для автоматического уравнения R₀)
+function prettyFormula(s) {
+  return String(s || "").replace(/\*/g, "·");
 }
 
 // Экранирование значения для атрибута (в формуле могут быть кавычки)

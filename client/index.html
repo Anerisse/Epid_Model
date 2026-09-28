@@ -58,6 +58,13 @@
           radial-gradient(40rem 30rem at 50% 120%, rgba(251, 113, 133, 0.06), transparent 60%);
       }
 
+      /* Каркас страницы в один экран: разделы не листают страницу вниз,
+         лишнее скроллится внутри колонок (как левая панель симуляции) */
+      .app-shell {
+        height: 100vh;
+        height: 100dvh;
+      }
+
       /* ---------- Сайдбар: пункты навигации ---------- */
       .nav-item {
         display: flex;
@@ -221,7 +228,7 @@
     <!-- Фоновое свечение -->
     <div class="bg-aurora"></div>
 
-    <div class="relative z-10 min-h-screen flex flex-col">
+    <div class="relative z-10 app-shell flex flex-col overflow-hidden">
       <!-- ===== Верхняя панель ===== -->
       <header
         class="px-6 py-4 flex items-center justify-between border-b border-slate-800/70 bg-ink-900/70 backdrop-blur-md"
@@ -354,7 +361,7 @@
         </aside>
 
         <!-- ===== Область контента ===== -->
-        <main class="flex-1 flex flex-col min-w-0">
+        <main class="flex-1 flex flex-col min-w-0 min-h-0">
           <!-- ---- Раздел «Модель» (рабочий) ---- -->
           <section id="section-model" data-section-page class="flex flex-col flex-1 min-h-0">
             <div class="px-6 pt-5 pb-3 flex items-end justify-between gap-4">
@@ -386,7 +393,7 @@
               <!-- Левая панель: уравнения -->
               <div
                 id="left-panel"
-                class="w-[46%] glass-card p-4 flex flex-col min-w-0"
+                class="w-[46%] glass-card p-4 flex flex-col min-w-0 min-h-0"
               >
                 <div class="flex items-center justify-between gap-2 mb-3">
                   <span class="text-sm font-semibold text-slate-300">Система ОДУ</span>
@@ -452,7 +459,7 @@
               ></div>
 
               <!-- Правая панель: диаграмма -->
-              <div id="right-panel" class="flex-1 glass-card p-4 flex flex-col min-w-0">
+              <div id="right-panel" class="flex-1 glass-card p-4 flex flex-col min-w-0 min-h-0">
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm font-semibold text-slate-300">Блок-схема компартментов</span>
                   <span id="diagram-compartments" class="text-[11px] text-slate-500">—</span>
@@ -494,7 +501,7 @@
               </div>
 
               <!-- Правая панель: качественный анализ и график -->
-              <div class="flex-1 glass-card p-4 flex flex-col min-w-0">
+              <div class="flex-1 glass-card p-4 flex flex-col min-w-0 min-h-0">
                 <div id="sim-analysis" class="shrink-0"></div>
                 <div class="flex items-center justify-between gap-2 mb-2 flex-wrap shrink-0">
                   <span class="text-sm font-semibold text-slate-300">Динамика компартментов</span>
@@ -566,7 +573,7 @@
               </div>
 
               <!-- Правая панель: модель против данных -->
-              <div class="flex-1 glass-card p-4 flex flex-col min-w-0">
+              <div class="flex-1 glass-card p-4 flex flex-col min-w-0 min-h-0">
                 <div class="flex items-center justify-between gap-2 mb-2 flex-wrap shrink-0">
                   <span class="text-sm font-semibold text-slate-300">Модель против данных</span>
                   <span id="fit-legend" class="flex flex-wrap gap-3"></span>
@@ -693,8 +700,8 @@
     <script src="./js/equations.js?v=21"></script>
     <script src="./js/diagram.js?v=21"></script>
     <script src="./js/parser.js?v=21"></script>
-    <script src="./js/analysis.js?v=21"></script>
-    <script src="./js/simulate.js?v=21"></script>
+    <script src="./js/analysis.js?v=22"></script>
+    <script src="./js/simulate.js?v=22"></script>
     <script src="./js/fit.js?v=21"></script>
     <script src="./js/main.js?v=21"></script>
   </body>
