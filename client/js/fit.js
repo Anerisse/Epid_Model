@@ -410,7 +410,7 @@ function addFitParamRow(container, name, fixedByDefault) {
   const preset = fitPreset(name);
 
   const wrap = document.createElement("div");
-  wrap.className = "sim-slider";
+  wrap.className = "sim-slider mb-[0.7rem]";
 
   const head = document.createElement("div");
   head.className = "flex items-center justify-between gap-2 mb-1";
@@ -477,7 +477,7 @@ function addFitParamRow(container, name, fixedByDefault) {
 // Строка населения N в панели фиксированных параметров (всегда слайдером)
 function addFitNRow(container, preset) {
   const wrap = document.createElement("div");
-  wrap.className = "sim-slider";
+  wrap.className = "sim-slider mb-[0.7rem]";
 
   const head = document.createElement("div");
   head.className = "flex items-center justify-between gap-2 mb-1";

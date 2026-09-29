@@ -57,7 +57,7 @@ function showToast(message, type = "success") {
   const area = document.getElementById("toast-area");
   const toast = document.createElement("div");
   toast.className =
-    "toast px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg border backdrop-blur-md " +
+    "animate-toast-in px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg border backdrop-blur-md transition-opacity transition-transform duration-[250ms] " +
     (type === "error"
       ? "bg-rose-500/15 text-rose-200 border-rose-500/30"
       : "bg-emerald-500/15 text-emerald-200 border-emerald-500/30");

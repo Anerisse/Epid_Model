@@ -140,7 +140,7 @@ function defaultInitial(name, population) {
 // ------------------------------------------------------------------
 function addSliderRow(container, opts) {
   const row = document.createElement("div");
-  row.className = "sim-slider";
+  row.className = "sim-slider mb-[0.7rem]";
 
   const head = document.createElement("div");
   head.className = "flex items-center justify-between gap-2 mb-1";

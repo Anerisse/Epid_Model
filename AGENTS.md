@@ -5,7 +5,7 @@
 ## Структура проекта
 
 - `server/` — API на NestJS 11 + TypeORM + PostgreSQL. Здесь **единственный** `package.json` в репозитории; все npm-команды запускайте отсюда.
-- `client/` — ванильный JS + Tailwind CDN. **Нет `package.json`, нет сборки.** Скрипты подключаются в фиксированном порядке в `index.html`: `keyboard.js`, `equations.js`, `diagram.js`, `parser.js`, `simulate.js`, `fit.js`, `main.js` (общие глобальные функции, без модулей). Кастомизация дизайна — инлайн-`<style>` в `index.html` + классы Tailwind.
+- `client/` — ванильный JS + Tailwind CDN. **Нет `package.json`, нет сборки.** Скрипты подключаются в фиксированном порядке в `index.html`: `keyboard.js`, `equations.js`, `diagram.js`, `parser.js`, `simulate.js`, `fit.js`, `main.js` (общие глобальные функции, без модулей). Кастомизация дизайна — целиком на Tailwind: тема и шрифты в `tailwind.config` внутри `index.html` (цвета `ink`, анимация тостов), утилиты в разметке HTML и в JS; псевдоэлементы, которые утилитами не выражаются (бегунок слайдера `sim-range`, скроллбары, плейсхолдер редактора), регистрируются плагином `tailwind.plugin` (addBase) в том же конфиге — инлайн-`<style>` отсутствует.
 - `docs/`, `diagrams/`, `plan/` — документация магистерской диссертации (docx/pdf/png/drawio), не код. Для разработки игнорируйте.
 
 ## Запуск приложения
