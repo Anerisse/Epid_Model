@@ -5,6 +5,7 @@
 // ============================================================
 import { NextResponse } from "next/server";
 import { parseOdeSystemSafe, lightStructure } from "@/core/parser";
+import { sanitizeLabels } from "@/core/labels";
 import { createModel, listModels } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,8 @@ export async function GET() {
   return NextResponse.json(listModels());
 }
 
-// Создание модели: структура парсером вычисляется на сервере
+// Создание модели: структура парсером вычисляется на сервере,
+// labels — пользовательские названия компартментов и параметров
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const name = String(body?.name ?? "").trim();
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
   }
   const parsed = parseOdeSystemSafe(rawText);
   const structure = parsed.ok ? lightStructure(parsed.structure) : null;
-  const model = createModel(name, rawText, structure);
+  const labels = sanitizeLabels(body?.labels);
+  const model = createModel(name, rawText, structure, labels);
   return NextResponse.json(model, { status: 201 });
 }

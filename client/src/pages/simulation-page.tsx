@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Activity, Loader2 } from "lucide-react";
 import { api, type SimulateResponse } from "../lib/api";
 import { useModel } from "../lib/model-context";
+import { useTheme } from "../lib/theme";
 import { SimulationChart } from "../components/simulation-chart";
 import { AnalysisPanel } from "../components/analysis-panel";
 import { SliderRow } from "../components/ui/slider-row";
@@ -51,7 +52,8 @@ function fmt(v: number): string {
 }
 
 export function SimulationPage() {
-  const { text, structure, presets } = useModel();
+  const { text, structure, presets, labels } = useModel();
+  const { theme } = useTheme();
 
   const [paramValues, setParamValues] = useState<Record<string, number>>({});
   const [initial, setInitial] = useState<Record<string, number>>({});
@@ -120,7 +122,9 @@ export function SimulationPage() {
   const canSimulate = Boolean(structure) && Object.keys(paramValues).length > 0;
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(360px,430px)_1fr] xl:overflow-hidden">
+    // Ниже xl блоки идут друг за другом (строки — по высоте контента),
+    // выше — две колонки во всю высоту окна
+    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-4 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(360px,430px)_1fr] xl:overflow-hidden">
       {/* Левая колонка: качественный анализ сверху, параметры ниже */}
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         {/* Качественный анализ — вверху, над параметрами */}
@@ -156,11 +160,12 @@ export function SimulationPage() {
                 {structure!.parameters.map((p) => {
                   const preset = presets![p];
                   if (!preset) return null;
-                  const accent = p === "N" || p === "n" ? "#e2e8f0" : undefined;
+                  const accent = p === "N" || p === "n" ? (theme === "light" ? "#334155" : "#e2e8f0") : undefined;
                   return (
                     <SliderRow
                       key={p}
                       label={p}
+                      hint={labels[p]?.ru}
                       value={paramValues[p] ?? preset.value}
                       min={preset.min}
                       max={preset.max}
@@ -183,6 +188,7 @@ export function SimulationPage() {
                       <SliderRow
                         key={c.name}
                         label={`${c.name}₀`}
+                        hint={labels[c.name]?.ru}
                         value={initial[c.name] ?? 0}
                         min={0}
                         max={Math.round(N)}

@@ -7,12 +7,13 @@
 // Точная копия рисования legacy/client/js/diagram.js (этап 2),
 // перенесённая на SVG-элементы.
 // ============================================================
-import type { Box, DiagramLayout, Flow } from "../lib/api";
+import type { Box, DiagramLayout, Flow, LabelsMap } from "../lib/api";
 
 const GRID_W = 640;
 const GRID_H = 420;
 
-// Подписи под символами известных компартментов
+// Подписи под символами известных компартментов (используются,
+// если пользователь не задал свои названия)
 const SUBLABEL: Record<string, string> = {
   S: "Susceptible",
   E: "Exposed",
@@ -21,13 +22,47 @@ const SUBLABEL: Record<string, string> = {
   D: "Deceased",
 };
 
-// Цвета рёбер, как в legacy
-const EDGE = "#94a3b8";
-const LABEL = "#cbd5e1";
-const PILL = "#101a30";
+// Цвета рёбер, подписей и «таблеток» — через CSS-переменные темы,
+// поэтому схема одинаково читается в тёмной и светлой темах
+const EDGE = "var(--color-slate-400)";
+const LABEL = "var(--color-slate-300)";
+const PILL = "var(--color-ink-800)";
+const PILL_TEXT = "var(--color-slate-100)";
 
 interface BlockDiagramProps {
   layout: DiagramLayout;
+  /** Пользовательские названия компартментов (подпись в блоке схемы) */
+  labels?: LabelsMap;
+}
+
+// Компактная легенда: компартменты, переносы, потери и «движители» инфекции.
+// Вынесена отдельно от схемы, чтобы блок-карточка могла разместить её
+// в шапке или над полем схемы.
+export function DiagramLegend({ layout }: BlockDiagramProps) {
+  const { order, flows } = layout;
+  const transfers = flows.filter((f) => f.to);
+  const losses = flows.filter((f) => !f.to);
+  const drivers = [...new Set(transfers.flatMap((f) => f.drivers || []))];
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-relaxed">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+        Компартменты:{" "}
+        <span className="font-mono normal-case tracking-normal text-slate-200">{order.join(" · ")}</span>
+      </span>
+      {transfers.length > 0 && (
+        <span className="text-slate-500">
+          {transfers.map((f) => `${f.from}→${f.to} (${f.label})`).join("  ·  ")}
+        </span>
+      )}
+      {losses.length > 0 && (
+        <span className="text-slate-500">
+          Потери: {losses.map((f) => `${f.from} (${f.label})`).join("  ·  ")}
+        </span>
+      )}
+      {drivers.length > 0 && <span className="text-slate-500">Влияет: {drivers.join(" · ")}</span>}
+    </div>
+  );
 }
 
 // detected obstacles: есть ли чужой блок на пути (между по горизонтали, тот же ряд)
@@ -83,7 +118,7 @@ function flowGeometry(fromBox: Box, toBox: Box, boxes: Record<string, Box>) {
 function ArrowHead({ x, y, angle, fill = EDGE }: { x: number; y: number; angle: number; fill?: string }) {
   const p1 = `${x - 12 * Math.cos(angle - Math.PI / 6)},${y - 12 * Math.sin(angle - Math.PI / 6)}`;
   const p2 = `${x - 12 * Math.cos(angle + Math.PI / 6)},${y - 12 * Math.sin(angle + Math.PI / 6)}`;
-  return <polygon points={`${x},${y} ${p1} ${p2}`} fill={fill} />;
+  return <polygon points={`${x},${y} ${p1} ${p2}`} style={{ fill }} />;
 }
 
 // Поток-перенос людей между двумя блоками
@@ -107,9 +142,9 @@ function FlowEdge({ flow, boxes }: { flow: Flow; boxes: Record<string, Box> }) {
 
   return (
     <g>
-      <path d={d} stroke={EDGE} strokeWidth={2} fill="none" />
+      <path d={d} strokeWidth={2} fill="none" style={{ stroke: EDGE }} />
       <ArrowHead x={endX} y={endY} angle={angle} />
-      <text x={labelX} y={labelY} textAnchor="middle" fontSize={12} fill={LABEL}>
+      <text x={labelX} y={labelY} textAnchor="middle" fontSize={12} style={{ fill: LABEL }}>
         {flow.label || "?"}
       </text>
     </g>
@@ -137,11 +172,11 @@ function ExitFlow({ flow, boxes, height }: { flow: Flow; boxes: Record<string, B
 
   return (
     <g>
-      <path d={`M ${x} ${yStart} L ${x} ${yEnd}`} stroke={EDGE} strokeWidth={2} strokeDasharray="4 3" fill="none" />
-      <polygon points={`${x},${yEnd} ${x - 6},${yEnd - 10} ${x + 6},${yEnd - 10}`} fill={EDGE} />
+      <path d={`M ${x} ${yStart} L ${x} ${yEnd}`} strokeWidth={2} strokeDasharray="4 3" fill="none" style={{ stroke: EDGE }} />
+      <polygon points={`${x},${yEnd} ${x - 6},${yEnd - 10} ${x + 6},${yEnd - 10}`} style={{ fill: EDGE }} />
       {/* «Таблетка» под крупной подписью — гасит линии, проходящие сквозь текст */}
-      <rect x={x - text.length * 5 - 8} y={labelY - 14} width={text.length * 10 + 16} height={24} rx={7} fill={PILL} />
-      <text x={x} y={labelY} textAnchor="middle" fontSize={17} fontWeight={700} fill="#f1f5f9">
+      <rect x={x - text.length * 5 - 8} y={labelY - 14} width={text.length * 10 + 16} height={24} rx={7} style={{ fill: PILL }} />
+      <text x={x} y={labelY} textAnchor="middle" fontSize={17} fontWeight={700} style={{ fill: PILL_TEXT }}>
         {text}
       </text>
     </g>
@@ -175,9 +210,18 @@ function InfectionEdge({ fromName, toName, boxes }: { fromName: string; toName: 
 }
 
 // Блок-компартмент: закруглённый квадрат с символом и подписью
-function CompartmentBlock({ name, box, color }: { name: string; box: Box; color: string }) {
+function CompartmentBlock({
+  name,
+  box,
+  color,
+  sublabel,
+}: {
+  name: string;
+  box: Box;
+  color: string;
+  sublabel?: string;
+}) {
   const half = box.size / 2;
-  const sublabel = SUBLABEL[name];
   return (
     <g>
       {/* Свечение по цвету блока */}
@@ -221,33 +265,13 @@ function CompartmentBlock({ name, box, color }: { name: string; box: Box; color:
   );
 }
 
-// Основной компонент: подпись панели, стрелки, дуги влияния, блоки
-export function BlockDiagram({ layout }: BlockDiagramProps) {
+// Схема: только сама графика — рамку, фон и заголовок задаёт карточка,
+// поэтому блок выглядит так же, как остальные разделы системы.
+export function BlockDiagram({ layout, labels }: BlockDiagramProps) {
   const { order, boxes, flows, colors } = layout;
 
-  const transfers = flows.filter((f) => f.to);
-  const losses = flows.filter((f) => !f.to);
-  const captionBits: string[] = [];
-  if (transfers.length) {
-    captionBits.push(transfers.map((f) => `${f.from} → ${f.to} (${f.label})`).join(" · "));
-  }
-  if (losses.length) {
-    captionBits.push(`Потери: ${losses.map((f) => `${f.from} (${f.label})`).join(" · ")}`);
-  }
-  const drivers = [...new Set(transfers.flatMap((f) => f.drivers || []))];
-  if (drivers.length) captionBits.push(`Влияет: ${drivers.join(" · ")}`);
-
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0e1730]">
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-2 pt-2.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-          Компартменты: <span className="font-mono normal-case text-slate-200">{order.join(" · ")}</span>
-        </span>
-        {captionBits.length > 0 && (
-          <span className="text-[11px] leading-relaxed text-slate-500">{captionBits.join("  ·  ")}</span>
-        )}
-      </div>
-      <svg viewBox={`0 0 ${GRID_W} ${GRID_H}`} className="block min-h-0 w-full flex-1" role="img" aria-label="Блок-схема модели">
+    <svg viewBox={`0 0 ${GRID_W} ${GRID_H}`} className="absolute inset-0 block h-full w-full" role="img" aria-label="Блок-схема модели">
         <defs>
           <filter id="diagram-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="10" />
@@ -273,9 +297,16 @@ export function BlockDiagram({ layout }: BlockDiagramProps) {
 
         {/* Блоки сверху стрелок */}
         {order.map((name, index) => (
-          <CompartmentBlock key={name} name={name} box={boxes[name]} color={colors[name] ?? colors[Object.keys(colors)[index]]} />
+          <CompartmentBlock
+            key={name}
+            name={name}
+            box={boxes[name]}
+            color={colors[name] ?? colors[Object.keys(colors)[index]]}
+            sublabel={
+              labels?.[name]?.en || labels?.[name]?.ru || SUBLABEL[name] || undefined
+            }
+          />
         ))}
-      </svg>
-    </div>
+    </svg>
   );
 }

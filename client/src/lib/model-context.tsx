@@ -15,7 +15,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type DiagramLayout, type ModelRecord, type ModelStructure, type ParamPreset } from "./api";
+import { api, type DiagramLayout, type FitResponse, type LabelsMap, type ModelRecord, type ModelStructure, type ParamPreset } from "./api";
 
 // Текст SIR по умолчанию, если в базе ещё нет ни одной модели
 const DEFAULT_MODEL_TEXT = [
@@ -33,10 +33,24 @@ interface ModelContextValue {
   diagram: DiagramLayout | null;
   parseError: string | null;
   models: ModelRecord[];
+  /** Результат последней оценки параметров — для статуса модели в шапке */
+  fitResult: FitResponse | null;
+  /** Пользовательские названия терминов: символ → { ru, en } */
+  labels: LabelsMap;
+  /** id модели в БД, если текущая модель уже сохранена (иначе null) */
+  currentId: number | null;
   setText: (t: string) => void;
   setName: (n: string) => void;
+  setLabels: (l: LabelsMap) => void;
+  setFitResult: (r: FitResponse | null) => void;
   refresh: () => void;
-  save: () => Promise<string | null>;
+  /** Создаёт модель в БД; без аргументов берутся текущие текст, название и названия */
+  save: (opts?: { name?: string; raw_text?: string; labels?: LabelsMap }) => Promise<string | null>;
+  /** Обновляет сохранённую модель (название, уравнение, названия терминов) */
+  updateModel: (
+    id: number,
+    patch: { name?: string; raw_text?: string; labels?: LabelsMap },
+  ) => Promise<string | null>;
   remove: (id: number) => Promise<void>;
   load: (m: ModelRecord) => void;
   loading: boolean;
@@ -58,6 +72,9 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   const [diagram, setDiagram] = useState<DiagramLayout | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [models, setModels] = useState<ModelRecord[]>([]);
+  const [fitResult, setFitResult] = useState<FitResponse | null>(null);
+  const [labels, setLabels] = useState<LabelsMap>({});
+  const [currentId, setCurrentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Загрузка списка моделей при старте; если модели есть — открываем
@@ -89,6 +106,8 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
+    // Модель изменилась — прежняя оценка параметров к ней не относится
+    setFitResult(null);
     if (!text.trim()) {
       setStructure(null);
       setDiagram(null);
@@ -128,18 +147,54 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       .catch(() => setModels([]));
   }, []);
 
-  const save = useCallback(async (): Promise<string | null> => {
-    const trimmedName = name.trim();
-    if (!trimmedName || !text.trim()) return "Введите название и текст системы ОДУ";
-    try {
-      const created = await api.models.create(trimmedName, text);
-      setModels((prev) => [created, ...prev]);
-      setName("");
-      return null;
-    } catch (err) {
-      return err instanceof Error ? err.message : String(err);
-    }
-  }, [name, text]);
+  const save = useCallback(
+    async (opts?: { name?: string; raw_text?: string; labels?: LabelsMap }): Promise<string | null> => {
+      const finalName = (opts?.name ?? name).trim();
+      const finalText = opts?.raw_text ?? text;
+      const finalLabels = opts?.labels ?? labels;
+      if (!finalName || !finalText.trim()) return "Введите название и текст системы ОДУ";
+      try {
+        const created = await api.models.create(finalName, finalText, finalLabels);
+        setModels((prev) => [created, ...prev]);
+        setCurrentId(created.id);
+        // При сохранении из редактора — принимаем правки как текущую модель
+        if (opts) {
+          setName(created.name);
+          setText(created.raw_text);
+          setLabels(created.labels ?? {});
+        } else {
+          setName("");
+        }
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    },
+    [name, text, labels],
+  );
+
+  // Обновление сохранённой модели: название, уравнение, названия терминов
+  const updateModel = useCallback(
+    async (
+      id: number,
+      patch: { name?: string; raw_text?: string; labels?: LabelsMap },
+    ): Promise<string | null> => {
+      try {
+        const updated = await api.models.update(id, patch);
+        setModels((prev) => prev.map((m) => (m.id === id ? updated : m)));
+        // Если правилась текущая модель — применяем изменения к ней
+        if (id === currentId) {
+          if (patch.name !== undefined) setName(updated.name);
+          if (patch.raw_text !== undefined) setText(updated.raw_text);
+          if (patch.labels !== undefined) setLabels(updated.labels ?? {});
+        }
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    },
+    [currentId],
+  );
 
   const remove = useCallback(
     async (id: number) => {
@@ -157,6 +212,8 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   const load = useCallback((m: ModelRecord) => {
     setName(m.name);
     setText(m.raw_text);
+    setLabels(m.labels ?? {});
+    setCurrentId(m.id);
   }, []);
 
   return (
@@ -169,10 +226,16 @@ export function ModelProvider({ children }: { children: ReactNode }) {
         diagram,
         parseError,
         models,
+        fitResult,
+        labels,
+        currentId,
         setText,
         setName,
+        setLabels,
+        setFitResult,
         refresh,
         save,
+        updateModel,
         remove,
         load,
         loading,

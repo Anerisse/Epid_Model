@@ -3,7 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Моделирование эпидемий</title>
+    <title>Simula — моделирование эпидемий</title>
+    <script>
+      // Применяем сохранённую тему до первой отрисовки (без «мигания»)
+      try {
+        var saved = localStorage.getItem("simula-theme");
+        var light = saved === "light" || (!saved && matchMedia("(prefers-color-scheme: light)").matches);
+        document.documentElement.classList.toggle("light", light);
+        document.documentElement.style.colorScheme = light ? "light" : "dark";
+      } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

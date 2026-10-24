@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTheme } from "../lib/theme";
 
 interface SimulationChartProps {
   time: number[];
@@ -56,36 +57,43 @@ export function SimulationChart({ time, series, names, colors }: SimulationChart
     [time, series, names],
   );
 
+  // Цвета осей, сетки и всплывающей подсказки — под текущую тему
+  const { theme } = useTheme();
+  const palette =
+    theme === "light"
+      ? { grid: "#e2e8f0", axis: "#64748b", tipBg: "#ffffff", tipBorder: "#cbd5e1" }
+      : { grid: "#1e293b", axis: "#64748b", tipBg: "#0f172a", tipBorder: "#334155" };
+
   return (
     <div className="h-full min-h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
-          <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+          <CartesianGrid stroke={palette.grid} strokeDasharray="3 3" />
           <XAxis
             dataKey="t"
-            stroke="#64748b"
+            stroke={palette.axis}
             fontSize={11}
             tickLine={false}
-            label={{ value: "дни", position: "insideBottomRight", offset: -2, fill: "#64748b", fontSize: 11 }}
+            label={{ value: "дни", position: "insideBottomRight", offset: -2, fill: palette.axis, fontSize: 11 }}
           />
           <YAxis
-            stroke="#64748b"
+            stroke={palette.axis}
             fontSize={11}
             width={62}
             tickFormatter={formatAxisValue}
             tickLine={false}
-            label={{ value: "людей", angle: -90, position: "insideLeft", offset: 18, fill: "#64748b", fontSize: 11 }}
+            label={{ value: "людей", angle: -90, position: "insideLeft", offset: 18, fill: palette.axis, fontSize: 11 }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#0f172a",
-              border: "1px solid #334155",
+              backgroundColor: palette.tipBg,
+              border: `1px solid ${palette.tipBorder}`,
               borderRadius: 10,
               fontSize: 12,
             }}
             labelFormatter={(v) => `t = ${v} дн.`}
           />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 12, color: palette.axis }} />
           {names.map((name, i) => (
             <Line
               key={name}

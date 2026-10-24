@@ -1,0 +1,44 @@
+<mxfile host="app.diagrams.net" agent="OpenCode" version="28.2.5">
+  <diagram name="Requirement Diagram" id="req_sysml_epid">
+    <mxGraphModel dx="3365" dy="2135" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Business Requirements -->
+        <mxCell id="BR_Title" value="БИЗНЕС-ТРЕБОВАНИЯ (Business Requirements)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="40" width="420" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="BR_01" value="&lt;&lt;requirement&gt;&gt;&#xa;BR-01&#xa;&#xa;Обеспечить программный инструмент для математического моделирования распространения инфекционных заболеваний в рамках магистерской диссертации.&#xa;&#xa;Источник: Цель работы (магистерская диссертация)&#xa;Критерий приёмки: Система позволяет последовательно выполнять этапы «Модель → Симуляция → Параметризация» и формирует воспроизводимые расчётные результаты." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#FFF2CC;strokeColor=#D6B656;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="40" y="80" width="340" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="BR_02" value="&lt;&lt;requirement&gt;&gt;&#xa;BR-02&#xa;&#xa;Обеспечить научную обоснованность и верифицируемость расчётов (вычисления прозрачны, воспроизводимы, основаны на корректных математических методах).&#xa;&#xa;Источник: Требования к НИР/диссертации&#xa;Критерий приёмки: Ключевые расчёты (РК4, R₀, МНК) выполняются детерминированно, с фиксируемыми входными данными и проверяемыми результатами." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#FFF2CC;strokeColor=#D6B656;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="420" y="80" width="340" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- Stakeholders -->
+        <mxCell id="SH_Title" value="ТРЕБОВАНИЯ СТЕЙКХОЛДЕРОВ (Stakeholder Requirements)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="240" width="520" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SH_01" value="&lt;&lt;requirement&gt;&gt;&#xa;SH-01&#xa;&#xa;Исследователь должен иметь возможность формализовать эпидемическую модель в виде ОДУ, сохранять и повторно использовать её.&#xa;&#xa;Источник: BR-01, BR-02&#xa;Критерий приёмки: Ввод текста ОДУ, корректный парсинг, отображение структуры, CRUD моделей (БД)." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#D5E8D4;strokeColor=#82B366;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="40" y="280" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="SH_02" value="&lt;&lt;requirement&gt;&gt;&#xa;SH-02&#xa;&#xa;Исследователь должен получать наглядное автоматическое графическое представление структуры модели (топология потоков).&#xa;&#xa;Источник: BR-01&#xa;Критерий приёмки: Автоматическая блок-схема с корректным отображением потоков, сил заражения и потерь." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#D5E8D4;strokeColor=#82B366;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="300" y="280" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="SH_03" value="&lt;&lt;requirement&gt;&gt;&#xa;SH-03&#xa;&#xa;Исследователь должен проводить численное моделирование с воспроизводимыми результатами и их качественной интерпретацией.&#xa;&#xa;Источник: BR-01, BR-02&#xa;Критерий приёмки: Симуляция (РК4), временные ряды, статистики (пик I, день пика, переболевшие), блок «Качественный анализ»." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#D5E8D4;strokeColor=#82B366;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="560" y="280" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="SH_04" value="&lt;&lt;requirement&gt;&gt;&#xa;SH-04&#xa;&#xa;Исследователь должен иметь возможность оценивать R₀ и получать его аналитическое (символьное) представление для проверки соответствия теории.&#xa;&#xa;Источник: BR-02&#xa;Критерий приёмки: R₀ методом NGM по правым частям ОДУ, при возможности — символьная формула с проверкой совпадения с численным NGM." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#D5E8D4;strokeColor=#82B366;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="820" y="280" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="SH_05" value="&lt;&lt;requirement&gt;&gt;&#xa;SH-05&#xa;&#xa;Исследователь должен проводить параметрическую идентификацию (МНК + Нелдер–Мид) по наблюдательным данным с оценкой качества аппроксимации (RMSE/R²).&#xa;&#xa;Источник: BR-01, BR-02&#xa;Критерий приёмки: Подбор параметров, RMSE/R², кривая модели накладывается на точки наблюдений; есть генерация синтетики." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#D5E8D4;strokeColor=#82B366;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="1080" y="280" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="SH_06" value="&lt;&lt;requirement&gt;&gt;&#xa;SH-06&#xa;&#xa;Система должна обеспечивать разделение ответственностей: тяжёлые вычисления — только на сервере, клиент — ввод/визуализация/навигация.&#xa;&#xa;Источник: BR-02&#xa;Критерий приёмки: Парсинг, РК4, NGM, МНК выполняются исключительно в server/core/*, клиент не дублирует вычисления." style="shape=rect;rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingTop=4;spacingLeft=6;spacingRight=6;fontSize=9;fillColor=#D5E8D4;strokeColor=#82B366;overflow=hidden;" parent="1" vertex="1">
+          <mxGeometry x="1340" y="280" width="240" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

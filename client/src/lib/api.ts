@@ -118,11 +118,21 @@ export interface SyntheticResponse {
   params?: Record<string, number>;
 }
 
+// Пользовательское название термина (компартмента или параметра)
+export interface TermLabel {
+  ru: string;
+  en: string;
+}
+
+// Карта названий: символ → название (рус./англ.)
+export type LabelsMap = Record<string, TermLabel>;
+
 export interface ModelRecord {
   id: number;
   name: string;
   raw_text: string;
   structure: unknown | null;
+  labels: LabelsMap | null;
   created_at: string;
   updated_at: string;
 }
@@ -183,8 +193,10 @@ export const api = {
   synthetic: (text: string) => postJson<SyntheticResponse>("/fit/synthetic", { text }),
   models: {
     list: () => getJson<ModelRecord[]>("/models"),
-    create: (name: string, raw_text: string) =>
-      postJson<ModelRecord>("/models", { name, raw_text }),
+    create: (name: string, raw_text: string, labels?: LabelsMap) =>
+      postJson<ModelRecord>("/models", { name, raw_text, labels }),
+    update: (id: number, patch: { name?: string; raw_text?: string; labels?: LabelsMap }) =>
+      patchJson<ModelRecord>(`/models/${id}`, patch),
     remove: (id: number) => del<{ ok: boolean }>(`/models/${id}`),
   },
 };

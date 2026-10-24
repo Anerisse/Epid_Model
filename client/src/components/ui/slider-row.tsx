@@ -11,6 +11,7 @@ export interface SliderRowProps {
   onChange: (value: number) => void;
   format?: (value: number) => string;
   accent?: string; // цвет текста подписи (для компартментов — цвет блока)
+  hint?: string; // пользовательское название параметра (рус.)
   disabled?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function SliderRow({
   onChange,
   format,
   accent,
+  hint,
   disabled,
 }: SliderRowProps) {
   return (
@@ -31,9 +33,12 @@ export function SliderRow({
         <span
           className="font-mono text-xs font-semibold"
           style={accent ? { color: accent } : undefined}
-          title={label}
+          title={hint ? `${label} — ${hint}` : label}
         >
           {label}
+          {hint && (
+            <span className="ml-1.5 font-sans text-[10px] font-normal text-slate-500">{hint}</span>
+          )}
         </span>
         <span className="font-mono text-xs text-slate-300 tabular-nums">
           {format ? format(value) : value}

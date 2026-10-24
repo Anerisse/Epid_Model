@@ -16,6 +16,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Label } from "../components/ui/label";
 import { Select } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
+import { cn } from "../lib/utils";
 
 const DEFAULT_POPULATION = 10000;
 const FREE_DEFAULT = ["β", "γ"];
@@ -61,8 +62,24 @@ function fmt(v: number | undefined | null): string {
   return String(Number(v.toFixed(4)));
 }
 
+// Плашка параметра в блоке результата: название и значение рядом,
+// значение подсвечено, если параметр оценён методом наименьших квадратов.
+// hint — пользовательское название параметра (рус.)
+function ParamRow({ name, value, accent, hint }: { name: string; value: number; accent?: boolean; hint?: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-2 rounded-lg border border-slate-700 px-2.5 py-1">
+      <span className="font-mono text-sm font-semibold text-slate-200">{name}</span>
+      {hint && <span className="text-[10px] text-slate-500">{hint}</span>}
+      <span className="font-mono text-xs text-slate-500">=</span>
+      <span className={cn("font-mono text-sm tabular-nums", accent ? "text-emerald-300" : "text-slate-300")}>
+        {fmt(value)}
+      </span>
+    </span>
+  );
+}
+
 export function ParametrizationPage() {
-  const { text, structure, presets } = useModel();
+  const { text, structure, presets, labels, setFitResult } = useModel();
 
   // Параметры модели без популяции — кандидаты на оценку
   const evaluable = useMemo(() => {
@@ -84,6 +101,7 @@ export function ParametrizationPage() {
   useEffect(() => {
     if (!structure || !presets) {
       setResult(null);
+      setFitResult(null);
       return;
     }
     const pv: Record<string, number> = {};
@@ -109,10 +127,13 @@ export function ParametrizationPage() {
     try {
       const res = await api.fit({ text, dataText, free, fixed, N });
       setResult(res.ok ? res : null);
+      // результат оценки кладём в общую модель — статус в панели «Модель»
+      setFitResult(res.ok ? res : null);
       if (!res.ok) setError(res.error ?? "Оценка не выполнена");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setResult(null);
+      setFitResult(null);
     } finally {
       setBusy(false);
     }
@@ -137,6 +158,7 @@ export function ParametrizationPage() {
           N: res.params?.N ?? N,
         });
         setResult(fit.ok ? fit : null);
+        setFitResult(fit.ok ? fit : null);
         if (!fit.ok) setError(fit.error ?? "Оценка не выполнена");
       } else {
         setError(res.error ?? "Синтетические данные не созданы");
@@ -150,8 +172,14 @@ export function ParametrizationPage() {
 
   const canRun = Boolean(structure) && dataText.trim().length > 0;
 
+  // Параметры результата делятся на оценённые МНК и заданные вручную
+  const fittedEntries = result ? Object.entries(result.params).filter(([k]) => free.includes(k)) : [];
+  const fixedEntries = result ? Object.entries(result.params).filter(([k]) => !free.includes(k)) : [];
+
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
+    // Ниже xl блоки идут друг за другом (строки — по высоте контента),
+    // выше — две колонки во всю высоту окна
+    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-4 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
       {/* Левая колонка — метод, данные, параметры */}
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         {/* Метод оценивания: базовый МНК + план других методов */}
@@ -244,7 +272,7 @@ export function ParametrizationPage() {
                   {evaluable.map((p) => (
                     <label
                       key={p}
-                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-800 bg-ink-800/40 px-3 py-2 text-sm"
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-800 bg-slate-800/40 px-3 py-2 text-sm"
                     >
                       <Checkbox
                         checked={free.includes(p)}
@@ -252,6 +280,9 @@ export function ParametrizationPage() {
                         aria-label={`Оценивать параметр ${p}`}
                       />
                       <span className="font-mono font-semibold text-slate-200">{p}</span>
+                      {labels[p]?.ru && (
+                        <span className="text-[11px] text-slate-500">{labels[p]!.ru}</span>
+                      )}
                       <span className="ml-auto text-[11px] text-slate-500">
                         {free.includes(p) ? "подбирается" : "фиксирован"}
                       </span>
@@ -269,6 +300,7 @@ export function ParametrizationPage() {
                         <SliderRow
                           key={p}
                           label={p}
+                          hint={labels[p]?.ru}
                           value={fixed[p] ?? preset.value}
                           min={preset.min}
                           max={preset.max}
@@ -310,26 +342,18 @@ export function ParametrizationPage() {
           <CardContent className="space-y-3">
             {result ? (
               <>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                  <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2 text-center">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+                  <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-2 text-center">
                     <p className="text-[10px] uppercase tracking-wider text-slate-500">RMSE</p>
                     <p className="font-mono text-sm text-slate-100">{fmt(result.rmse)}</p>
                   </div>
-                  <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2 text-center">
+                  <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-2 text-center">
                     <p className="text-[10px] uppercase tracking-wider text-slate-500">R²</p>
                     <p className="font-mono text-sm text-emerald-300">{fmt(result.r2)}</p>
                   </div>
-                  <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2 text-center">
+                  <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-2 text-center">
                     <p className="text-[10px] uppercase tracking-wider text-slate-500">Итерации</p>
                     <p className="font-mono text-sm text-slate-100">{result.iterations}</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-800 bg-ink-800/40 p-2 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Подобрано</p>
-                    <p className="font-mono text-sm text-slate-100">
-                      {Object.entries(result.params)
-                        .map(([k, v]) => `${k} = ${fmt(v)}`)
-                        .join(" · ")}
-                    </p>
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-500">
@@ -337,6 +361,40 @@ export function ParametrizationPage() {
                   {FIT_METHODS.find((m) => m.id === method)?.name ?? "МНК · Нелдер–Мид"}
                 </p>
                 <FitChart time={result.time} model={result.model} points={result.points} />
+
+                {/* Подобранные параметры — отдельным блоком под графиком:
+                сначала оценённые МНК, затем заданные вручную */}
+                <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-3">
+                  <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Подобранные параметры
+                  </p>
+                  <div className="space-y-3">
+                    {fittedEntries.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-medium text-emerald-300">
+                          Оценено методом наименьших квадратов
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {fittedEntries.map(([k, v]) => (
+                            <ParamRow key={k} name={k} value={v} accent hint={labels[k]?.ru} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {fixedEntries.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-medium text-slate-500">
+                          Задано вручную (фиксированные)
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {fixedEntries.map(([k, v]) => (
+                            <ParamRow key={k} name={k} value={v} hint={labels[k]?.ru} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </>
             ) : (
               <div className="grid h-[340px] place-items-center rounded-lg border border-dashed border-slate-800 text-sm text-slate-500">

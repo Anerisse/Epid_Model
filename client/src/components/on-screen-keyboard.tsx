@@ -138,7 +138,7 @@ export function OnScreenKeyboard({ open, onClose, targetRef, onChange }: OnScree
   return (
     // Плавающая панель: прижата к низу экрана по центру, max-height 50vh
     <div
-      className="fixed bottom-4 left-1/2 z-40 w-[min(1240px,calc(100vw-1.5rem))] -translate-x-1/2 select-none overflow-y-auto rounded-2xl border border-slate-600/50 bg-ink-800/95 shadow-2xl backdrop-blur-md"
+      className="fixed bottom-4 left-1/2 z-40 w-[min(1240px,calc(100vw-1.5rem))] -translate-x-1/2 select-none overflow-y-auto rounded-2xl border border-slate-600/50 bg-ink-800/95 surface-float backdrop-blur-md"
       style={{ maxHeight: "50vh" }}
       role="dialog"
       aria-label="Виртуальная клавиатура"

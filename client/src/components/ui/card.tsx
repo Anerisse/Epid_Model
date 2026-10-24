@@ -1,11 +1,13 @@
 // component/ui/card.tsx — карточка контейнера (shadcn-стиль).
+// Тень задаёт класс .surface-card: в тёмной теме — мягкая тень,
+// в светлой — плоская поверхность, объём создаёт рамка.
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-xl border border-slate-800 bg-ink-900/70 text-slate-200 shadow-lg shadow-black/20", className)}
+      className={cn("rounded-xl border border-slate-800 bg-ink-900/70 text-slate-200 surface-card", className)}
       {...props}
     />
   );

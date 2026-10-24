@@ -66,7 +66,7 @@ export function AnalysisPanel({ analysis, manualFormula, onManualFormula }: Anal
 
       {/* Символьное уравнение R₀ */}
       {analysis.formula && (
-        <div className="rounded-lg border border-slate-800 bg-ink-800/60 px-3 py-2">
+        <div className="rounded-lg border border-slate-800 bg-slate-800/40 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Уравнение R₀
           </p>
@@ -78,13 +78,13 @@ export function AnalysisPanel({ analysis, manualFormula, onManualFormula }: Anal
 
       {/* Порог и итог переболевших */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-slate-800 bg-ink-800/40 px-3 py-2">
+        <div className="rounded-lg border border-slate-800 bg-slate-800/40 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Порог</p>
           <p className="font-mono text-base text-slate-200">
             {analysis.threshold !== null ? `1/R₀ = ${formatR0(analysis.threshold)}` : "—"}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-800 bg-ink-800/40 px-3 py-2">
+        <div className="rounded-lg border border-slate-800 bg-slate-800/40 px-3 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Итог переболевших
           </p>
@@ -105,7 +105,7 @@ export function AnalysisPanel({ analysis, manualFormula, onManualFormula }: Anal
 
       {/* Матрицы F/V (NGM) */}
       {analysis.details && (
-        <div className="rounded-lg border border-slate-800 bg-ink-800/40">
+        <div className="rounded-lg border border-slate-800 bg-slate-800/40">
           <button
             type="button"
             onClick={() => setOpenDetails((v) => !v)}

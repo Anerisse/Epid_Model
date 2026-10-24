@@ -4,6 +4,7 @@
 // ============================================================
 import { NextResponse } from "next/server";
 import { parseOdeSystemSafe, lightStructure } from "@/core/parser";
+import { sanitizeLabels } from "@/core/labels";
 import { deleteModel, getModel, updateModel } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json(model);
 }
 
-// Частичное обновление name / raw_text (структура пересчитывается)
+// Частичное обновление name / raw_text / labels (структура пересчитывается)
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const num = Number(id);
@@ -31,12 +32,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const body = await request.json().catch(() => null);
 
-  const patch: { name?: string; raw_text?: string; structure?: unknown | null } = {};
+  const patch: {
+    name?: string;
+    raw_text?: string;
+    structure?: unknown | null;
+    labels?: ReturnType<typeof sanitizeLabels> | null;
+  } = {};
   if (body?.name !== undefined) patch.name = String(body.name);
   if (body?.raw_text !== undefined) {
     patch.raw_text = String(body.raw_text);
     const parsed = parseOdeSystemSafe(patch.raw_text);
     patch.structure = parsed.ok ? lightStructure(parsed.structure) : null;
+  }
+  // Пользовательские названия терминов (рус./англ.)
+  if (body?.labels !== undefined) {
+    patch.labels = body.labels === null ? null : sanitizeLabels(body.labels);
   }
 
   const model = updateModel(num, patch);
