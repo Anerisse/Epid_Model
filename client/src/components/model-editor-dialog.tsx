@@ -7,7 +7,7 @@
 // карандашику в блоке «Структура модели». Компартменты и параметры
 // подбираются разбором текущего текста ОДУ (сервер, /api/parse).
 // ============================================================
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Pencil, Save, Upload, X } from "lucide-react";
 import { api, type LabelsMap, type ModelStructure } from "../lib/api";
 import { useModel } from "../lib/model-context";
@@ -96,15 +96,20 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Список терминов: компартменты и параметры из разбора текста
-  const terms = useMemo(() => {
-    if (!structure) return [] as { symbol: string; kind: string }[];
-    const compartments = structure.compartments.map((c) => ({ symbol: c.name, kind: "компартмент" }));
-    const parameters = structure.parameters
-      .filter((p) => !compartments.some((c) => c.symbol === p))
-      .map((p) => ({ symbol: p, kind: "параметр" }));
-    return [...compartments, ...parameters];
+  // Списки терминов по группам: сначала компартменты, затем коэффициенты
+  const compartments = useMemo(() => {
+    if (!structure) return [] as string[];
+    return structure.compartments.map((c) => c.name);
   }, [structure]);
+
+  const parameters = useMemo(() => {
+    if (!structure) return [] as string[];
+    const compSet = new Set(compartments);
+    // N — численность популяции, обычно название не требуется
+    return structure.parameters.filter((p) => !compSet.has(p) && p !== "N" && p !== "n");
+  }, [structure, compartments]);
+
+  const hasTerms = compartments.length > 0 || parameters.length > 0;
 
   if (!target) return null;
 
@@ -215,50 +220,99 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
             )}
           </div>
 
-          {/* Названия терминов: символ → русский и английский варианты */}
-          <div className="space-y-2">
+          {/* Названия терминов: компартменты и параметры (коэффициенты) */}
+          <div className="space-y-4">
             <div className="flex items-baseline justify-between gap-2">
-              <Label>Названия компартментов и параметров</Label>
+              <Label>Названия терминов</Label>
               <span className="text-[11px] text-slate-500">русский · английский</span>
             </div>
-            {terms.length === 0 ? (
+            {!hasTerms ? (
               <p className="rounded-lg border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-500">
                 {parseError
                   ? "Исправьте систему ОДУ — список терминов появится автоматически."
                   : "Введите систему ОДУ — компартменты и параметры будут распознаны."}
               </p>
             ) : (
-              <div className="overflow-hidden rounded-lg border border-slate-800">
-                <div className="grid grid-cols-[56px_1fr_1fr] gap-2 bg-slate-800/40 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                  <span>Символ</span>
-                  <span>Русский</span>
-                  <span>Английский</span>
-                </div>
-                {terms.map((t) => (
-                  <Fragment key={t.symbol}>
-                    <div className="grid grid-cols-[56px_1fr_1fr] items-center gap-2 border-t border-slate-800 px-2 py-1.5">
-                      <span
-                        className="inline-flex w-fit items-center rounded-md border border-slate-700 bg-ink-800 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-100"
-                        title={t.kind}
-                      >
-                        {t.symbol}
-                      </span>
-                      <Input
-                        value={labels[t.symbol]?.ru ?? ""}
-                        onChange={(e) => setLabel(t.symbol, "ru", e.target.value)}
-                        placeholder="Восприимчивые"
-                        className="h-8 text-xs"
-                      />
-                      <Input
-                        value={labels[t.symbol]?.en ?? ""}
-                        onChange={(e) => setLabel(t.symbol, "en", e.target.value)}
-                        placeholder="Susceptible"
-                        className="h-8 text-xs"
-                      />
+              <>
+                {/* Компартменты */}
+                {compartments.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Компартменты
+                    </p>
+                    <div className="overflow-hidden rounded-lg border border-slate-800">
+                      <div className="grid grid-cols-[56px_1fr_1fr] gap-2 bg-slate-800/40 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        <span>Символ</span>
+                        <span>Русский</span>
+                        <span>Английский</span>
+                      </div>
+                      {compartments.map((symbol) => (
+                        <div
+                          key={symbol}
+                          className="grid grid-cols-[56px_1fr_1fr] items-center gap-2 border-t border-slate-800 px-2 py-1.5"
+                        >
+                          <span className="inline-flex w-fit items-center rounded-md border border-slate-700 bg-ink-800 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-100">
+                            {symbol}
+                          </span>
+                          <Input
+                            value={labels[symbol]?.ru ?? ""}
+                            onChange={(e) => setLabel(symbol, "ru", e.target.value)}
+                            placeholder="Восприимчивые"
+                            className="h-8 text-xs"
+                          />
+                          <Input
+                            value={labels[symbol]?.en ?? ""}
+                            onChange={(e) => setLabel(symbol, "en", e.target.value)}
+                            placeholder="Susceptible"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      ))}
                     </div>
-                  </Fragment>
-                ))}
-              </div>
+                  </div>
+                )}
+
+                {/* Коэффициенты (параметры) */}
+                {parameters.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Коэффициенты
+                    </p>
+                    <div className="overflow-hidden rounded-lg border border-slate-800">
+                      <div className="grid grid-cols-[56px_1fr_1fr] gap-2 bg-slate-800/40 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        <span>Символ</span>
+                        <span>Русский</span>
+                        <span>Английский</span>
+                      </div>
+                      {parameters.map((symbol) => (
+                        <div
+                          key={symbol}
+                          className="grid grid-cols-[56px_1fr_1fr] items-center gap-2 border-t border-slate-800 px-2 py-1.5"
+                        >
+                          <span className="inline-flex w-fit items-center rounded-md border border-slate-700 bg-ink-800 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-100">
+                            {symbol}
+                          </span>
+                          <Input
+                            value={labels[symbol]?.ru ?? ""}
+                            onChange={(e) => setLabel(symbol, "ru", e.target.value)}
+                            placeholder="Коэффициент заражения"
+                            className="h-8 text-xs"
+                          />
+                          <Input
+                            value={labels[symbol]?.en ?? ""}
+                            onChange={(e) => setLabel(symbol, "en", e.target.value)}
+                            placeholder="transmission rate"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Численность популяции N — общая величина, её название обычно не задают.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

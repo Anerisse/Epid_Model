@@ -121,8 +121,47 @@ function ArrowHead({ x, y, angle, fill = EDGE }: { x: number; y: number; angle: 
   return <polygon points={`${x},${y} ${p1} ${p2}`} style={{ fill }} />;
 }
 
+// Построить всплывающую подсказку для компартмента: русское название при наведении
+function compartmentTitle(name: string, labels?: LabelsMap): string | undefined {
+  if (!labels) return undefined;
+  const l = labels[name];
+  if (!l) return undefined;
+  const ru = (l.ru || "").trim();
+  const en = (l.en || "").trim();
+  if (ru && en && ru !== en) return `RU: ${ru} · EN: ${en}`;
+  if (ru) return `RU: ${ru}`;
+  if (en) return `EN: ${en}`;
+  return undefined;
+}
+
+// Построить всплывающую подсказку для потока по параметрам (коэффициентам)
+function flowTitle(flow: Flow, labels?: LabelsMap): string | undefined {
+  if (!labels) return undefined;
+  const symbols = new Set<string>();
+  if (flow.label) {
+    const matches = flow.label.match(/[A-Za-zΑ-Ωα-ω][A-Za-z0-9Α-Ωα-ω]*/g) || [];
+    for (const m of matches) symbols.add(m);
+  }
+  if (flow.drivers) {
+    for (const d of flow.drivers) symbols.add(d);
+  }
+  if (symbols.size === 0) return undefined;
+  const parts: string[] = [];
+  for (const sym of Array.from(symbols)) {
+    if (sym === "N" || sym === "n") continue;
+    const l = labels[sym];
+    if (!l) continue;
+    const ru = (l.ru || "").trim();
+    const en = (l.en || "").trim();
+    if (ru && en && ru !== en) parts.push(`${sym} — ${ru} · ${en}`);
+    else if (ru) parts.push(`${sym} — ${ru}`);
+    else if (en) parts.push(`${sym} — ${en}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
 // Поток-перенос людей между двумя блоками
-function FlowEdge({ flow, boxes }: { flow: Flow; boxes: Record<string, Box> }) {
+function FlowEdge({ flow, boxes, labels }: { flow: Flow; boxes: Record<string, Box>; labels?: LabelsMap }) {
   const fromBox = boxes[flow.from];
   const toBox = flow.to ? boxes[flow.to] : undefined;
   if (!fromBox || !toBox) return null;
@@ -139,9 +178,11 @@ function FlowEdge({ flow, boxes }: { flow: Flow; boxes: Record<string, Box> }) {
   // Позиция подписи: середина линии или середина Безье (P0 + 2*P1 + P2)/4
   const labelX = ctrl ? (startX + 2 * ctrl.x + endX) / 4 : (startX + endX) / 2;
   const labelY = ctrl ? (startY + 2 * ctrl.y + endY) / 4 - 12 : (startY + endY) / 2 - 14;
+  const title = flowTitle(flow, labels);
 
   return (
     <g>
+      {title ? <title>{title}</title> : null}
       <path d={d} strokeWidth={2} fill="none" style={{ stroke: EDGE }} />
       <ArrowHead x={endX} y={endY} angle={angle} />
       <text x={labelX} y={labelY} textAnchor="middle" fontSize={12} style={{ fill: LABEL }}>
@@ -152,7 +193,7 @@ function FlowEdge({ flow, boxes }: { flow: Flow; boxes: Record<string, Box> }) {
 }
 
 // Потеря «в никуда» (µ*X): стрелка вниз от блока, подпись на «таблетке»
-function ExitFlow({ flow, boxes, height }: { flow: Flow; boxes: Record<string, Box>; height: number }) {
+function ExitFlow({ flow, boxes, height, labels }: { flow: Flow; boxes: Record<string, Box>; height: number; labels?: LabelsMap }) {
   const box = boxes[flow.from];
   if (!box || flow.to) return null;
 
@@ -169,9 +210,11 @@ function ExitFlow({ flow, boxes, height }: { flow: Flow; boxes: Record<string, B
 
   const text = flow.label || "µ";
   const labelY = yStart + 24;
+  const title = flowTitle(flow, labels);
 
   return (
     <g>
+      {title ? <title>{title}</title> : null}
       <path d={`M ${x} ${yStart} L ${x} ${yEnd}`} strokeWidth={2} strokeDasharray="4 3" fill="none" style={{ stroke: EDGE }} />
       <polygon points={`${x},${yEnd} ${x - 6},${yEnd - 10} ${x + 6},${yEnd - 10}`} style={{ fill: EDGE }} />
       {/* «Таблетка» под крупной подписью — гасит линии, проходящие сквозь текст */}
@@ -215,15 +258,18 @@ function CompartmentBlock({
   box,
   color,
   sublabel,
+  title,
 }: {
   name: string;
   box: Box;
   color: string;
   sublabel?: string;
+  title?: string;
 }) {
   const half = box.size / 2;
   return (
     <g>
+      {title ? <title>{title}</title> : null}
       {/* Свечение по цвету блока */}
       <rect
         x={box.x - half}
@@ -280,12 +326,12 @@ export function BlockDiagram({ layout, labels }: BlockDiagramProps) {
 
         {/* Потоки-переносы */}
         {flows.map((f, i) => (
-          <FlowEdge key={`flow-${i}`} flow={f} boxes={boxes} />
+          <FlowEdge key={`flow-${i}`} flow={f} boxes={boxes} labels={labels} />
         ))}
 
         {/* Потери «в никуда» */}
         {flows.map((f, i) => (
-          <ExitFlow key={`exit-${i}`} flow={f} boxes={boxes} height={GRID_H} />
+          <ExitFlow key={`exit-${i}`} flow={f} boxes={boxes} height={GRID_H} labels={labels} />
         ))}
 
         {/* Движители: пунктир янтарным от движителя к источнику */}
@@ -302,9 +348,8 @@ export function BlockDiagram({ layout, labels }: BlockDiagramProps) {
             name={name}
             box={boxes[name]}
             color={colors[name] ?? colors[Object.keys(colors)[index]]}
-            sublabel={
-              labels?.[name]?.en || labels?.[name]?.ru || SUBLABEL[name] || undefined
-            }
+            sublabel={labels?.[name]?.en?.trim() ? labels[name]!.en!.trim() : undefined}
+            title={compartmentTitle(name, labels)}
           />
         ))}
     </svg>

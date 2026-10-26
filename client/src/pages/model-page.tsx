@@ -6,7 +6,7 @@
 // моделей скроллится внутри своей карточки.
 // ============================================================
 import { useRef, useState } from "react";
-import { Keyboard as KeyboardIcon, Save, Trash2, FolderOpen, AlertTriangle } from "lucide-react";
+import { Keyboard as KeyboardIcon, Save, Trash2, FolderOpen, AlertTriangle, Pencil } from "lucide-react";
 import { useModel } from "../lib/model-context";
 import { BlockDiagram, DiagramLegend } from "../components/block-diagram";
 import { ModelEditorDialog, type EditTarget } from "../components/model-editor-dialog";
@@ -124,7 +124,7 @@ export function ModelPage() {
           <CardHeader className="shrink-0 pb-2">
             <CardTitle>Сохранённые модели</CardTitle>
             <CardDescription>
-              Выберите модель — она загрузится в редактор, симуляцию и параметризацию.
+              Нажмите на название — загрузить модель в редактор. Карандаш — редактировать названия и уравнение.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1.5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
@@ -141,8 +141,8 @@ export function ModelPage() {
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
-                    title="Открыть редактор модели"
-                    onClick={() => openEditor(m)}
+                    title="Загрузить модель в редактор"
+                    onClick={() => load(m)}
                   >
                     <p className="truncate text-sm font-semibold text-slate-200">{m.name}</p>
                     <p className="truncate text-[11px] text-slate-500">id {m.id} · {m.updated_at.slice(0, 16)}</p>
@@ -150,11 +150,11 @@ export function ModelPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Загрузить модель ${m.name} в редактор`}
-                    title="Загрузить в редактор"
-                    onClick={() => load(m)}
+                    aria-label={`Редактировать модель ${m.name}: названия и уравнение`}
+                    title="Редактировать названия и уравнение"
+                    onClick={() => openEditor(m)}
                   >
-                    <FolderOpen className="size-4 text-slate-400" />
+                    <Pencil className="size-4 text-slate-400" />
                   </Button>
                   <Button
                     variant="ghost"
