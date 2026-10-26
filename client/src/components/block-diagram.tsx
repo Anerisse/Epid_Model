@@ -35,35 +35,9 @@ interface BlockDiagramProps {
   labels?: LabelsMap;
 }
 
-// Компактная легенда: компартменты, переносы, потери и «движители» инфекции.
-// Вынесена отдельно от схемы, чтобы блок-карточка могла разместить её
-// в шапке или над полем схемы.
-export function DiagramLegend({ layout }: BlockDiagramProps) {
-  const { order, flows } = layout;
-  const transfers = flows.filter((f) => f.to);
-  const losses = flows.filter((f) => !f.to);
-  const drivers = [...new Set(transfers.flatMap((f) => f.drivers || []))];
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-relaxed">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-        Компартменты:{" "}
-        <span className="font-mono normal-case tracking-normal text-slate-200">{order.join(" · ")}</span>
-      </span>
-      {transfers.length > 0 && (
-        <span className="text-slate-500">
-          {transfers.map((f) => `${f.from}→${f.to} (${f.label})`).join("  ·  ")}
-        </span>
-      )}
-      {losses.length > 0 && (
-        <span className="text-slate-500">
-          Потери: {losses.map((f) => `${f.from} (${f.label})`).join("  ·  ")}
-        </span>
-      )}
-      {drivers.length > 0 && <span className="text-slate-500">Влияет: {drivers.join(" · ")}</span>}
-    </div>
-  );
-}
+// Легенда отдельно не нужна: компартменты, потоки и потери перечислены
+// в блоке «Структура модели» рядом, поэтому схема занимает всю высоту
+// карточки.
 
 // detected obstacles: есть ли чужой блок на пути (между по горизонтали, тот же ряд)
 function hasBypass(fromBox: Box, toBox: Box, boxes: Record<string, Box>): boolean {
