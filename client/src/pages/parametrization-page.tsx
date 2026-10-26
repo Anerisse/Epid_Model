@@ -64,8 +64,21 @@ function fmt(v: number | undefined | null): string {
 
 // Плашка параметра в блоке результата: название и значение рядом,
 // значение подсвечено, если параметр оценён методом наименьших квадратов.
-// hint — пользовательское название параметра (рус.)
-function ParamRow({ name, value, accent, hint }: { name: string; value: number; accent?: boolean; hint?: string }) {
+// hint — пользовательское название параметра (рус.);
+// unit — единица измерения (1/день, чел.)
+function ParamRow({
+  name,
+  value,
+  accent,
+  hint,
+  unit,
+}: {
+  name: string;
+  value: number;
+  accent?: boolean;
+  hint?: string;
+  unit?: string;
+}) {
   return (
     <span className="inline-flex items-baseline gap-2 rounded-lg border border-slate-700 px-2.5 py-1">
       <span className="font-mono text-sm font-semibold text-slate-200">{name}</span>
@@ -74,6 +87,7 @@ function ParamRow({ name, value, accent, hint }: { name: string; value: number; 
       <span className={cn("font-mono text-sm tabular-nums", accent ? "text-emerald-300" : "text-slate-300")}>
         {fmt(value)}
       </span>
+      {unit && <span className="text-[10px] text-slate-500">{unit}</span>}
     </span>
   );
 }
@@ -224,7 +238,7 @@ export function ParametrizationPage() {
           <CardHeader className="pb-2">
             <CardTitle>Наблюдения I(t)</CardTitle>
             <CardDescription>
-              По строкам «день число» (первые наблюдения задают I₀). Пробел или запятая — разделители.
+              По строкам «день число» (первые наблюдения задают I(0)). Пробел или запятая — разделители.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -306,6 +320,7 @@ export function ParametrizationPage() {
                           max={preset.max}
                           step={preset.step}
                           format={fmt}
+                          unit={preset.unit}
                           onChange={(v) => setFixed((prev) => ({ ...prev, [p]: v }))}
                         />
                       );
@@ -317,6 +332,7 @@ export function ParametrizationPage() {
                     max={100000}
                     step={500}
                     format={(v) => fmt(v)}
+                    unit="чел."
                     onChange={setN}
                   />
                 </div>
@@ -376,7 +392,14 @@ export function ParametrizationPage() {
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {fittedEntries.map(([k, v]) => (
-                            <ParamRow key={k} name={k} value={v} accent hint={labels[k]?.ru} />
+                            <ParamRow
+                              key={k}
+                              name={k}
+                              value={v}
+                              accent
+                              hint={labels[k]?.ru}
+                              unit={presets?.[k]?.unit}
+                            />
                           ))}
                         </div>
                       </div>
@@ -388,7 +411,13 @@ export function ParametrizationPage() {
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {fixedEntries.map(([k, v]) => (
-                            <ParamRow key={k} name={k} value={v} hint={labels[k]?.ru} />
+                            <ParamRow
+                              key={k}
+                              name={k}
+                              value={v}
+                              hint={labels[k]?.ru}
+                              unit={presets?.[k]?.unit}
+                            />
                           ))}
                         </div>
                       </div>

@@ -12,6 +12,7 @@ export interface SliderRowProps {
   format?: (value: number) => string;
   accent?: string; // цвет текста подписи (для компартментов — цвет блока)
   hint?: string; // пользовательское название параметра (рус.)
+  unit?: string; // единица измерения (1/день, чел. и т. п.)
   disabled?: boolean;
 }
 
@@ -25,6 +26,7 @@ export function SliderRow({
   format,
   accent,
   hint,
+  unit,
   disabled,
 }: SliderRowProps) {
   return (
@@ -40,8 +42,9 @@ export function SliderRow({
             <span className="ml-1.5 font-sans text-[10px] font-normal text-slate-500">{hint}</span>
           )}
         </span>
-        <span className="font-mono text-xs text-slate-300 tabular-nums">
-          {format ? format(value) : value}
+        <span className="flex items-baseline gap-1 font-mono text-xs text-slate-300 tabular-nums">
+          <span>{format ? format(value) : value}</span>
+          {unit && <span className="text-[10px] text-slate-500">{unit}</span>}
         </span>
       </div>
       <input

@@ -107,7 +107,7 @@ export function VerificationPage() {
             <div className="flex flex-wrap gap-1.5">
               <PlanChip>структура модели</PlanChip>
               <PlanChip>оценённые параметры</PlanChip>
-              <PlanChip>I₀</PlanChip>
+              <PlanChip>I(0)</PlanChip>
               <PlanChip>горизонт прогноза</PlanChip>
             </div>
             <BlockStub text="Список параметров с их оценками и переключатель «проверять все компартменты или только I»." />

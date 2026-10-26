@@ -4,46 +4,30 @@
 // (POST /api/simulate, дебаунс 120 мс) → графики + блок
 // «Качественный анализ» (R₀, порог, переболевшие, ручная формула).
 // ============================================================
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Loader2 } from "lucide-react";
 import { api, type SimulateResponse } from "../lib/api";
 import { useModel } from "../lib/model-context";
-import { useTheme } from "../lib/theme";
 import { SimulationChart } from "../components/simulation-chart";
 import { AnalysisPanel } from "../components/analysis-panel";
 import { SliderRow } from "../components/ui/slider-row";
+import { Input } from "../components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
 
 const DEFAULT_POPULATION = 10000;
+
+// N/n — население: это не настраиваемый коэффициент, а сумма
+// начальных значений всех компартментов.
+function isPopulationParam(name: string): boolean {
+  return name === "N" || name === "n";
+}
 
 // Начальное значение компартмента по умолчанию (S≈99%, I≈1%, остальные 0)
 function defaultInitialValue(name: string, N: number): number {
   if (name === "S") return Math.round(0.99 * N);
   if (name === "I") return Math.round(0.01 * N);
   return 0;
-}
-
-// Масштабирует начальные условия пропорционально при изменении N:
-// сумма компартментов снова ≈ N (как в legacy-интерфейсе)
-function rescaleInitials(
-  initial: Record<string, number>,
-  oldN: number,
-  newN: number,
-): Record<string, number> {
-  const factor = oldN > 0 ? newN / oldN : 1;
-  const scaled: Record<string, number> = {};
-  for (const key of Object.keys(initial)) {
-    scaled[key] = initial[key] * factor;
-  }
-  const largest = Object.keys(scaled).sort((a, b) => scaled[b] - scaled[a])[0];
-  if (largest) {
-    const sumOthers = Object.keys(scaled)
-      .filter((k) => k !== largest)
-      .reduce((s, k) => s + scaled[k], 0);
-    scaled[largest] = Math.max(0, newN - sumOthers);
-  }
-  return scaled;
 }
 
 // Формат значения ползунка: компактный, «как есть»
@@ -53,7 +37,6 @@ function fmt(v: number): string {
 
 export function SimulationPage() {
   const { text, structure, presets, labels } = useModel();
-  const { theme } = useTheme();
 
   const [paramValues, setParamValues] = useState<Record<string, number>>({});
   const [initial, setInitial] = useState<Record<string, number>>({});
@@ -72,9 +55,12 @@ export function SimulationPage() {
       setInitial({});
       return;
     }
-    const N = presets["N"]?.value ?? DEFAULT_POPULATION;
+    const N = presets["N"]?.value ?? presets["n"]?.value ?? DEFAULT_POPULATION;
     const pv: Record<string, number> = {};
     structure.parameters.forEach((p) => {
+      // Население не хранится среди настраиваемых параметров — оно
+      // пересчитывается из начальных условий ниже.
+      if (isPopulationParam(p)) return;
       pv[p] = presets[p]?.value ?? 1;
     });
     setParamValues(pv);
@@ -86,13 +72,37 @@ export function SimulationPage() {
     setHorizon(100);
   }, [text, structure, presets]);
 
+  // Население N = сумма начальных значений всех компартментов.
+  // Это согласуется со смыслом N в ОДУ (β·S·I/N): отдельного ползунка
+  // для N нет, чтобы не получать «население», не равное сумме групп.
+  const population = useMemo(
+    () =>
+      Math.round(
+        Object.values(initial).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0),
+      ),
+    [initial],
+  );
+
   // Запуск симуляции с дебаунсом при любом изменении управления
   useEffect(() => {
-    if (!text.trim() || !structure || Object.keys(paramValues).length === 0) return;
+    if (!text.trim() || !structure || Object.keys(initial).length === 0) return;
+    // N = 0 сделает правые части с делением на N неопределёнными
+    if (population <= 0) {
+      setResult(null);
+      setError("Население N = 0: задайте хотя бы одну ненулевую группу.");
+      setPending(false);
+      return;
+    }
     setPending(true);
     const timer = setTimeout(() => {
+      // Население передаём в ОДУ как обычный параметр, но берём его
+      // не из ползунка, а из суммы начальных условий.
+      const params: Record<string, number> = { ...paramValues };
+      structure.parameters.forEach((p) => {
+        if (isPopulationParam(p)) params[p] = population;
+      });
       api
-        .simulate({ text, params: paramValues, initial, horizon, manualFormula })
+        .simulate({ text, params, initial, horizon, manualFormula })
         .then((res) => {
           setResult(res.ok ? res : null);
           setError(res.ok ? null : res.error ?? "Симуляция не выполнена");
@@ -104,22 +114,15 @@ export function SimulationPage() {
         .finally(() => setPending(false));
     }, 120);
     return () => clearTimeout(timer);
-  }, [text, structure, paramValues, initial, horizon, manualFormula]);
+  }, [text, structure, paramValues, initial, population, horizon, manualFormula]);
 
-  const N = paramValues["N"] ?? paramValues["n"] ?? DEFAULT_POPULATION;
-
-  // Изменение параметра: N масштабирует начальные условия
+  // Изменение настраиваемого параметра: N больше не масштабирует
+  // начальные условия — население задаётся ими напрямую.
   const handleParamChange = (name: string, value: number) => {
-    setParamValues((prev) => {
-      const next = { ...prev, [name]: value };
-      if ((name === "N" || name === "n") && prev[name] > 0) {
-        setInitial((iv) => rescaleInitials(iv, prev[name], value));
-      }
-      return next;
-    });
+    setParamValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  const canSimulate = Boolean(structure) && Object.keys(paramValues).length > 0;
+  const canSimulate = Boolean(structure && presets);
 
   return (
     // Ниже xl блоки идут друг за другом (строки — по высоте контента),
@@ -159,8 +162,7 @@ export function SimulationPage() {
               <>
                 {structure!.parameters.map((p) => {
                   const preset = presets![p];
-                  if (!preset) return null;
-                  const accent = p === "N" || p === "n" ? (theme === "light" ? "#334155" : "#e2e8f0") : undefined;
+                  if (!preset || isPopulationParam(p)) return null;
                   return (
                     <SliderRow
                       key={p}
@@ -171,29 +173,60 @@ export function SimulationPage() {
                       max={preset.max}
                       step={preset.step}
                       format={fmt}
-                      accent={accent}
+                      unit={preset.unit}
                       onChange={(v) => handleParamChange(p, v)}
                     />
                   );
                 })}
 
+                {structure!.parameters.some(isPopulationParam) && (
+                  <p className="text-[11px] leading-snug text-slate-500">
+                    N — население: не настраивается ползунком, а складывается из начальных
+                    значений групп (ниже).
+                  </p>
+                )}
+
                 <Separator />
 
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Начальные условия (сумма ≈ {fmt(N)})
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Начальные условия
                   </p>
+
+                  {/* N — read-only: население всегда равно сумме групп */}
+                  <div className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span
+                        className="font-mono text-xs font-semibold text-slate-200"
+                        title="Население — сумма начальных значений всех компартментов"
+                      >
+                        N
+                      </span>
+                      <span className="text-[10px] text-slate-500">сумма всех групп</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={fmt(population)}
+                        aria-label="Население N — сумма начальных значений компартментов"
+                        className="h-8 flex-1 bg-ink-800/60 font-mono text-xs text-slate-300"
+                      />
+                      <span className="shrink-0 text-[11px] text-slate-500">чел.</span>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     {structure!.compartments.map((c) => (
                       <SliderRow
                         key={c.name}
-                        label={`${c.name}₀`}
+                        label={`${c.name}(0)`}
                         hint={labels[c.name]?.ru}
                         value={initial[c.name] ?? 0}
                         min={0}
-                        max={Math.round(N)}
+                        max={Math.max(100000, Math.ceil(population * 2))}
                         step={1}
                         format={fmt}
+                        unit="чел."
                         onChange={(v) =>
                           setInitial((prev) => ({ ...prev, [c.name]: Math.max(0, v) }))
                         }
@@ -263,7 +296,7 @@ export function SimulationPage() {
               <div className="flex-1 px-2 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Пик I</p>
                 <p className="font-mono text-sm text-slate-100">
-                  {result.stats.peakValue !== null ? fmt(result.stats.peakValue) : "—"}
+                  {result.stats.peakValue !== null ? `${fmt(result.stats.peakValue)} чел.` : "—"}
                 </p>
               </div>
               <div className="flex-1 px-2 py-1.5">
@@ -275,7 +308,7 @@ export function SimulationPage() {
               <div className="flex-1 px-2 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Выздоровели</p>
                 <p className="font-mono text-sm text-slate-100">
-                  {result.stats.recovered !== null ? fmt(result.stats.recovered) : "—"}
+                  {result.stats.recovered !== null ? `${fmt(result.stats.recovered)} чел.` : "—"}
                 </p>
               </div>
             </CardContent>

@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { parseOdeSystemSafe } from "@/core/parser";
 import { compartmentColor } from "@/core/diagram";
 import { defaultInitial, runSimulation } from "@/core/simulate";
-import { DEFAULT_POPULATION, paramPreset } from "@/core/presets";
+import { DEFAULT_POPULATION, isPopulationParam, paramPreset } from "@/core/presets";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,13 @@ export async function POST(request: Request) {
   const initial = names.map((name) => {
     const v = body?.initial?.[name];
     return typeof v === "number" ? v : defaultInitial(name, N);
+  });
+
+  // N/n — население: в симуляции это сумма начальных значений всех
+  // компартментов (а не независимый параметр, который масштабирует систему).
+  const population = initial.reduce((sum, v) => sum + (Number.isFinite(v) ? v : 0), 0);
+  structure.parameters.forEach((p) => {
+    if (isPopulationParam(p)) params[p] = population;
   });
 
   const horizon = Math.min(300, Math.max(1, Number(body?.horizon) || 100));
