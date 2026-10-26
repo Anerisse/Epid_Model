@@ -1,16 +1,26 @@
 // ============================================================
 // components/model-editor-dialog.tsx — окно редактирования модели:
-// название, текст системы ОДУ и пользовательские названия
-// компартментов и параметров (русский и английский варианты).
+// название, текст системы ОДУ, пользовательские названия
+// компартментов и параметров (русский и английский варианты)
+// и допущения модели (галочки + заметки).
 //
 // Открывается по клику на модель в списке сохранённых и по
-// карандашику в блоке «Структура модели». Компартменты и параметры
-// подбираются разбором текущего текста ОДУ (сервер, /api/parse).
+// карандашику в блоке «Структура модели». Компартменты, параметры
+// и подсказки по допущениям подбираются разбором текущего текста
+// ОДУ (сервер, /api/parse); допущения правятся локально и попадают
+// в БД только по кнопке «Сохранить в базу».
 // ============================================================
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Pencil, Save, Upload, X } from "lucide-react";
-import { api, type LabelsMap, type ModelStructure } from "../lib/api";
+import {
+  api,
+  type AssumptionCheck,
+  type AssumptionsState,
+  type LabelsMap,
+  type ModelStructure,
+} from "../lib/api";
 import { useModel } from "../lib/model-context";
+import { ModelAssumptions } from "./model-assumptions";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -22,6 +32,8 @@ export interface EditTarget {
   name: string;
   raw_text: string;
   labels: LabelsMap;
+  /** Допущения сохранённой модели — переносятся обратно в рабочую модель */
+  assumptions: AssumptionsState | null;
 }
 
 interface ModelEditorDialogProps {
@@ -37,11 +49,16 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
     setName: applyName,
     setText: applyText,
     setLabels: applyLabels,
+    setAssumptions: applyAssumptions,
   } = useModel();
   const [name, setNameLocal] = useState("");
   const [rawText, setRawText] = useState("");
   const [labels, setLabelsLocal] = useState<LabelsMap>({});
   const [structure, setStructure] = useState<ModelStructure | null>(null);
+  // Допущения редактируются локально: в БД (или в рабочую модель) они
+  // попадают по кнопкам «Сохранить в базу» / «В редактор модели»
+  const [assumptions, setAssumptionsLocal] = useState<AssumptionsState>({ items: {}, notes: "" });
+  const [assumptionChecks, setAssumptionChecks] = useState<AssumptionCheck[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,15 +70,18 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
     setNameLocal(target.name);
     setRawText(target.raw_text);
     setLabelsLocal(target.labels ?? {});
+    setAssumptionsLocal(target.assumptions ?? { items: {}, notes: "" });
     setError(null);
     setParseError(null);
   }, [target]);
 
-  // Разбор текста ОДУ с дебаунсом — чтобы показать компартменты и параметры
+  // Разбор текста ОДУ с дебаунсом — чтобы показать компартменты,
+  // параметры и подсказки по допущениям
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     if (!rawText.trim()) {
       setStructure(null);
+      setAssumptionChecks([]);
       setParseError(null);
       return;
     }
@@ -71,14 +91,17 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
         .then((res) => {
           if (res.ok && res.structure) {
             setStructure(res.structure);
+            setAssumptionChecks(res.assumptions ?? []);
             setParseError(null);
           } else {
             setStructure(null);
+            setAssumptionChecks([]);
             setParseError(res.error ?? "Не удалось разобрать систему ОДУ");
           }
         })
         .catch((err) => {
           setStructure(null);
+          setAssumptionChecks([]);
           setParseError(err instanceof Error ? err.message : String(err));
         });
     }, 300);
@@ -131,8 +154,8 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
     setError(null);
     try {
       const message = target.id
-        ? await updateModel(target.id, { name, raw_text: rawText, labels })
-        : await save({ name, raw_text: rawText, labels });
+        ? await updateModel(target.id, { name, raw_text: rawText, labels, assumptions })
+        : await save({ name, raw_text: rawText, labels, assumptions });
       if (message) {
         setError(message);
         return;
@@ -152,6 +175,7 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
         raw_text: rawText,
         structure: null,
         labels,
+        assumptions,
         created_at: "",
         updated_at: "",
       });
@@ -160,6 +184,7 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
       applyName(name);
       applyText(rawText);
       applyLabels(labels);
+      applyAssumptions(assumptions);
     }
     onClose();
   };
@@ -315,6 +340,17 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
               </>
             )}
           </div>
+
+          {/* Допущения модели — те же галочки и заметки, что на странице,
+          но правятся локально и сохраняются вместе с этой записью
+          (или переносятся в рабочую модель кнопкой «В редактор модели») */}
+          <ModelAssumptions
+            checks={assumptionChecks}
+            value={assumptions}
+            onChange={setAssumptionsLocal}
+            idPrefix="edit-assumption"
+            className="h-auto bg-ink-900/40"
+          />
 
           {error && (
             <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">

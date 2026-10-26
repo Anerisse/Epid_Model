@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { parseOdeSystemSafe, lightStructure } from "@/core/parser";
 import { paramPresetsFor } from "@/core/presets";
+import { detectAssumptions } from "@/core/assumptions";
 import { computeDiagram } from "@/core/diagram";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     ok: true,
     structure: lightStructure(parsed.structure),
     presets: paramPresetsFor(parsed.structure.parameters),
+    assumptions: detectAssumptions(parsed.structure),
     diagram: computeDiagram(parsed.structure, 640, 420),
   });
 }

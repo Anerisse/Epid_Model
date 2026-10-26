@@ -13,6 +13,8 @@ export interface ParamPreset {
   min: number;
   max: number;
   step: number;
+  /** Единица измерения параметра: коэффициенты — 1/день, население — чел. */
+  unit: string;
 }
 
 export interface Flow {
@@ -50,6 +52,31 @@ export interface DiagramLayout {
   colors: Record<string, string>;
 }
 
+// --- Допущения модели ------------------------------------------
+
+export type AssumptionId =
+  | "closedPopulation"
+  | "noLatentPeriod"
+  | "constantTransmission"
+  | "homogeneousMixing";
+
+export interface AssumptionCheck {
+  id: AssumptionId;
+  title: string;
+  description: string;
+  /** Что предлагает автоматический разбор уравнений */
+  suggested: boolean;
+  /** false — автоматика не уверена, решение за пользователем */
+  auto: boolean;
+  evidence: string;
+  warnings: { checked: string; unchecked: string };
+}
+
+export interface AssumptionsState {
+  items: Partial<Record<AssumptionId, boolean>>;
+  notes: string;
+}
+
 export interface SimStats {
   peakValue: number | null;
   peakDay: number | null;
@@ -79,6 +106,7 @@ export interface ParseResponse {
   error?: string;
   structure?: ModelStructure;
   presets?: Record<string, ParamPreset>;
+  assumptions?: AssumptionCheck[];
   diagram?: DiagramLayout;
 }
 
@@ -133,6 +161,7 @@ export interface ModelRecord {
   raw_text: string;
   structure: unknown | null;
   labels: LabelsMap | null;
+  assumptions: AssumptionsState | null;
   created_at: string;
   updated_at: string;
 }
@@ -193,10 +222,21 @@ export const api = {
   synthetic: (text: string) => postJson<SyntheticResponse>("/fit/synthetic", { text }),
   models: {
     list: () => getJson<ModelRecord[]>("/models"),
-    create: (name: string, raw_text: string, labels?: LabelsMap) =>
-      postJson<ModelRecord>("/models", { name, raw_text, labels }),
-    update: (id: number, patch: { name?: string; raw_text?: string; labels?: LabelsMap }) =>
-      patchJson<ModelRecord>(`/models/${id}`, patch),
+    create: (
+      name: string,
+      raw_text: string,
+      labels?: LabelsMap,
+      assumptions?: AssumptionsState,
+    ) => postJson<ModelRecord>("/models", { name, raw_text, labels, assumptions }),
+    update: (
+      id: number,
+      patch: {
+        name?: string;
+        raw_text?: string;
+        labels?: LabelsMap;
+        assumptions?: AssumptionsState;
+      },
+    ) => patchJson<ModelRecord>(`/models/${id}`, patch),
     remove: (id: number) => del<{ ok: boolean }>(`/models/${id}`),
   },
 };

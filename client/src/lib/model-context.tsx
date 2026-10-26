@@ -15,7 +15,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type DiagramLayout, type FitResponse, type LabelsMap, type ModelRecord, type ModelStructure, type ParamPreset } from "./api";
+import { api, type AssumptionCheck, type AssumptionsState, type DiagramLayout, type FitResponse, type LabelsMap, type ModelRecord, type ModelStructure, type ParamPreset } from "./api";
 
 // Текст SIR по умолчанию, если в базе ещё нет ни одной модели
 const DEFAULT_MODEL_TEXT = [
@@ -24,6 +24,11 @@ const DEFAULT_MODEL_TEXT = [
   "dI/dt = σ*E - γ*I",
   "dR/dt = γ*I",
 ].join("\n");
+
+// Пустые допущения — для новой модели или записи без них
+function emptyAssumptions(): AssumptionsState {
+  return { items: {}, notes: "" };
+}
 
 interface ModelContextValue {
   text: string;
@@ -37,19 +42,34 @@ interface ModelContextValue {
   fitResult: FitResponse | null;
   /** Пользовательские названия терминов: символ → { ru, en } */
   labels: LabelsMap;
+  /** Автоматические подсказки-допущения из разбора уравнений */
+  assumptionChecks: AssumptionCheck[];
+  /** Подтверждённые галочки и свободные заметки исследователя */
+  assumptions: AssumptionsState;
   /** id модели в БД, если текущая модель уже сохранена (иначе null) */
   currentId: number | null;
   setText: (t: string) => void;
   setName: (n: string) => void;
   setLabels: (l: LabelsMap) => void;
   setFitResult: (r: FitResponse | null) => void;
+  setAssumptions: (a: AssumptionsState) => void;
   refresh: () => void;
   /** Создаёт модель в БД; без аргументов берутся текущие текст, название и названия */
-  save: (opts?: { name?: string; raw_text?: string; labels?: LabelsMap }) => Promise<string | null>;
-  /** Обновляет сохранённую модель (название, уравнение, названия терминов) */
+  save: (opts?: {
+    name?: string;
+    raw_text?: string;
+    labels?: LabelsMap;
+    assumptions?: AssumptionsState;
+  }) => Promise<string | null>;
+  /** Обновляет сохранённую модель (название, уравнение, названия терминов, допущения) */
   updateModel: (
     id: number,
-    patch: { name?: string; raw_text?: string; labels?: LabelsMap },
+    patch: {
+      name?: string;
+      raw_text?: string;
+      labels?: LabelsMap;
+      assumptions?: AssumptionsState;
+    },
   ) => Promise<string | null>;
   remove: (id: number) => Promise<void>;
   load: (m: ModelRecord) => void;
@@ -74,8 +94,11 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   const [models, setModels] = useState<ModelRecord[]>([]);
   const [fitResult, setFitResult] = useState<FitResponse | null>(null);
   const [labels, setLabels] = useState<LabelsMap>({});
+  const [assumptionChecks, setAssumptionChecks] = useState<AssumptionCheck[]>([]);
+  const [assumptions, setAssumptionsState] = useState<AssumptionsState>(emptyAssumptions);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const assumptionsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Загрузка списка моделей при старте; если модели есть — открываем
   // последнюю сохранённую, как в legacy-интерфейсе
@@ -86,14 +109,17 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       .then((list) => {
         if (!alive) return;
         setModels(list);
-        setText((prev) => {
-          if (prev) return prev;
-          return list.length ? list[0].raw_text : DEFAULT_MODEL_TEXT;
-        });
-        setName((prev) => {
-          if (prev) return prev;
-          return list.length ? list[0].name : "";
-        });
+        const last = list[0];
+        if (!last) {
+          setText((prev) => prev || DEFAULT_MODEL_TEXT);
+          return;
+        }
+        setText((prev) => prev || last.raw_text);
+        setName((prev) => prev || last.name);
+        // Подтягиваем названия терминов и допущения последней модели
+        setLabels(last.labels ?? {});
+        setCurrentId(last.id);
+        setAssumptionsState(last.assumptions ?? emptyAssumptions());
       })
       .catch(() => setModels([]))
       .finally(() => alive && setLoading(false));
@@ -112,6 +138,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       setStructure(null);
       setDiagram(null);
       setParseError(null);
+      setAssumptionChecks([]);
       return;
     }
     timer.current = setTimeout(() => {
@@ -122,16 +149,19 @@ export function ModelProvider({ children }: { children: ReactNode }) {
             setStructure(res.structure);
             setDiagram(res.diagram);
             setPresets(res.presets);
+            setAssumptionChecks(res.assumptions ?? []);
             setParseError(null);
           } else {
             setStructure(null);
             setDiagram(null);
+            setAssumptionChecks([]);
             setParseError(res.error || "Не удалось разобрать модель");
           }
         })
         .catch((err) => {
           setStructure(null);
           setDiagram(null);
+          setAssumptionChecks([]);
           setParseError(err instanceof Error ? err.message : String(err));
         });
     }, 300);
@@ -147,10 +177,43 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       .catch(() => setModels([]));
   }, []);
 
+  // Изменение допущений: держим в контексте сразу, а для сохранённой
+  // модели тихо записываем в БД (с дебаунсом, чтобы не писать на каждый
+  // символ в свободном поле).
+  const setAssumptions = useCallback(
+    (next: AssumptionsState) => {
+      setAssumptionsState(next);
+      if (currentId === null) return;
+      // Пишем в БД только если в редакторе тот же текст, что сохранён:
+      // иначе подсказки относятся к новой (ещё не сохранённой) модели и
+      // запись испортила бы старую.
+      const saved = models.find((m) => m.id === currentId);
+      if (!saved || saved.raw_text !== text.trim()) return;
+      if (assumptionsTimer.current) clearTimeout(assumptionsTimer.current);
+      assumptionsTimer.current = setTimeout(() => {
+        api.models
+          .update(currentId, { assumptions: next })
+          .then((updated) => {
+            setModels((prev) => prev.map((m) => (m.id === currentId ? updated : m)));
+          })
+          .catch(() => {
+            // Не мешаем работе: при следующем сохранении данные уйдут снова
+          });
+      }, 600);
+    },
+    [currentId, models, text],
+  );
+
   const save = useCallback(
-    async (opts?: { name?: string; raw_text?: string; labels?: LabelsMap }): Promise<string | null> => {
+    async (opts?: {
+      name?: string;
+      raw_text?: string;
+      labels?: LabelsMap;
+      assumptions?: AssumptionsState;
+    }): Promise<string | null> => {
       const finalName = (opts?.name ?? name).trim();
       const finalText = opts?.raw_text ?? text;
+      const finalAssumptions = opts?.assumptions ?? assumptions;
       let finalLabels = opts?.labels ?? labels;
       // При сохранении добираем названия из словаря для известных символов
       const dictC: Record<string, { ru: string; en: string }> = {
@@ -207,7 +270,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       finalLabels = merged;
       if (!finalName || !finalText.trim()) return "Введите название и текст системы ОДУ";
       try {
-        const created = await api.models.create(finalName, finalText, finalLabels);
+        const created = await api.models.create(finalName, finalText, finalLabels, finalAssumptions);
         setModels((prev) => [created, ...prev]);
         setCurrentId(created.id);
         // При сохранении из редактора — принимаем правки как текущую модель
@@ -215,6 +278,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
           setName(created.name);
           setText(created.raw_text);
           setLabels(created.labels ?? {});
+          setAssumptionsState(created.assumptions ?? finalAssumptions);
         } else {
           setName("");
         }
@@ -223,14 +287,19 @@ export function ModelProvider({ children }: { children: ReactNode }) {
         return err instanceof Error ? err.message : String(err);
       }
     },
-    [name, text, labels],
+    [name, text, labels, assumptions],
   );
 
-  // Обновление сохранённой модели: название, уравнение, названия терминов
+  // Обновление сохранённой модели: название, уравнение, названия терминов, допущения
   const updateModel = useCallback(
     async (
       id: number,
-      patch: { name?: string; raw_text?: string; labels?: LabelsMap },
+      patch: {
+        name?: string;
+        raw_text?: string;
+        labels?: LabelsMap;
+        assumptions?: AssumptionsState;
+      },
     ): Promise<string | null> => {
       try {
         let patchToSend = patch;
@@ -296,6 +365,10 @@ export function ModelProvider({ children }: { children: ReactNode }) {
           if (patch.name !== undefined) setName(updated.name);
           if (patch.raw_text !== undefined) setText(updated.raw_text);
           if (patchToSend.labels !== undefined) setLabels(updated.labels ?? patchToSend.labels);
+          if (patch.assumptions !== undefined) {
+            if (assumptionsTimer.current) clearTimeout(assumptionsTimer.current);
+            setAssumptionsState(updated.assumptions ?? patch.assumptions);
+          }
         }
         return null;
       } catch (err) {
@@ -319,9 +392,13 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   );
 
   const load = useCallback((m: ModelRecord) => {
+    // Сбрасываем отложенную запись допущений прежней модели, иначе она
+    // перезапишет только что загруженные данные.
+    if (assumptionsTimer.current) clearTimeout(assumptionsTimer.current);
     setName(m.name);
     setText(m.raw_text);
     setLabels(m.labels ?? {});
+    setAssumptionsState(m.assumptions ?? emptyAssumptions());
     setCurrentId(m.id);
   }, []);
 
@@ -337,11 +414,14 @@ export function ModelProvider({ children }: { children: ReactNode }) {
         models,
         fitResult,
         labels,
+        assumptionChecks,
+        assumptions,
         currentId,
         setText,
         setName,
         setLabels,
         setFitResult,
+        setAssumptions,
         refresh,
         save,
         updateModel,

@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { parseOdeSystemSafe, lightStructure } from "@/core/parser";
 import { sanitizeLabels } from "@/core/labels";
+import { sanitizeAssumptions } from "@/core/assumptions";
 import { createModel, listModels } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
   const parsed = parseOdeSystemSafe(rawText);
   const structure = parsed.ok ? lightStructure(parsed.structure) : null;
   const labels = sanitizeLabels(body?.labels);
-  const model = createModel(name, rawText, structure, labels);
+  const assumptions = sanitizeAssumptions(body?.assumptions);
+  const model = createModel(name, rawText, structure, labels, assumptions);
   return NextResponse.json(model, { status: 201 });
 }

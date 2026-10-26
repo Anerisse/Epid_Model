@@ -22,7 +22,7 @@ interface Step {
 }
 
 export function ModelRail() {
-  const { text, name, structure, fitResult, models, labels, currentId } = useModel();
+  const { text, name, structure, fitResult, models, labels, assumptions, currentId } = useModel();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -96,8 +96,9 @@ export function ModelRail() {
           name: saved.name,
           raw_text: saved.raw_text,
           labels: saved.labels ?? {},
+          assumptions: saved.assumptions ?? null,
         }
-      : { id: null, name, raw_text: text, labels };
+      : { id: null, name, raw_text: text, labels, assumptions };
 
   return (
     <aside

@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { parseOdeSystemSafe, lightStructure } from "@/core/parser";
 import { sanitizeLabels } from "@/core/labels";
+import { sanitizeAssumptions } from "@/core/assumptions";
 import { deleteModel, getModel, updateModel } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     raw_text?: string;
     structure?: unknown | null;
     labels?: ReturnType<typeof sanitizeLabels> | null;
+    assumptions?: ReturnType<typeof sanitizeAssumptions>;
   } = {};
   if (body?.name !== undefined) patch.name = String(body.name);
   if (body?.raw_text !== undefined) {
@@ -47,6 +49,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // Пользовательские названия терминов (рус./англ.)
   if (body?.labels !== undefined) {
     patch.labels = body.labels === null ? null : sanitizeLabels(body.labels);
+  }
+  // Допущения модели и свободные заметки исследователя
+  if (body?.assumptions !== undefined) {
+    patch.assumptions = body.assumptions === null ? null : sanitizeAssumptions(body.assumptions);
   }
 
   const model = updateModel(num, patch);
