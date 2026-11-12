@@ -211,12 +211,6 @@ select option:hover {
   background: var(--color-slate-700);
 }
 
-/* Правая полоса «Модель» — в светлой теме плотная, как и сайдбар */
-.light .app-rail {
-  background-color: var(--color-ink-900);
-  border-left-color: var(--color-slate-800);
-}
-
 /* Точечный фон для пустых разделов-«планов» */
 .griddots {
   background-image: radial-gradient(circle at 1px 1px, var(--color-slate-800) 1px, transparent 0);

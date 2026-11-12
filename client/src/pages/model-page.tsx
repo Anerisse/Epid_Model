@@ -68,7 +68,7 @@ export function ModelPage() {
     // Ниже xl блоки идут друг за другом: строки грида по высоте контента
     // (auto-rows-min + content-start), иначе они растягиваются на всю
     // высоту окна и содержимое наезжает друг на друга.
-    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-4 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(380px,440px)_1fr] xl:overflow-hidden">
+    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-5 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(380px,440px)_1fr] xl:overflow-hidden">
       {/* Левая колонка: редактор ОДУ (закреплён сверху) + список сохранённых
       моделей (скроллится внутри карточки). На широком экране колонка
       занимает всю высоту, на узком — прокручивается вместе со страницей. */}

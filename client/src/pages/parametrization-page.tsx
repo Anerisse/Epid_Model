@@ -193,7 +193,7 @@ export function ParametrizationPage() {
   return (
     // Ниже xl блоки идут друг за другом (строки — по высоте контента),
     // выше — две колонки во всю высоту окна
-    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-4 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
+    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-5 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
       {/* Левая колонка — метод, данные, параметры */}
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         {/* Метод оценивания: базовый МНК + план других методов */}

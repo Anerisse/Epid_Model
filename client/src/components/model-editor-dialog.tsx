@@ -11,6 +11,7 @@
 // в БД только по кнопке «Сохранить в базу».
 // ============================================================
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Loader2, Pencil, Save, Upload, X } from "lucide-react";
 import {
   api,
@@ -189,14 +190,16 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
     onClose();
   };
 
-  return (
-    // Затемнение и окно по центру экрана
+  return createPortal(
+    // Затемнение на весь экран и окно ниже шапки. Портал в document.body
+    // нужен, чтобы окно не обрезалось шапкой: у неё backdrop-blur создаёт
+    // собственный контекст наложения для position: fixed.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 pb-4 pt-20 backdrop-blur-sm"
       onMouseDown={onClose}
     >
       <div
-        className="surface-float flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-ink-900"
+        className="surface-float flex max-h-[calc(100dvh-6rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-ink-900"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Шапка окна */}
@@ -373,6 +376,7 @@ export function ModelEditorDialog({ target, onClose }: ModelEditorDialogProps) {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,14 +1,16 @@
 // ============================================================
-// components/model-rail.tsx — вкладка «Модель» у правого края
-// рабочей области (под шапкой). Не во всю высоту: узкая кнопка-
-// вкладка с вертикальной подписью и индикатором пройденных этапов
-// дорожной карты (введена → названия компартментов →
-// отпараметризована → верифицирована). По нажатию раскрывается
-// подробный статус, а внутри — карандаш редактора модели.
+// components/model-status.tsx — статус текущей модели в шапке.
+//
+// Раньше это была вертикальная вкладка «Модель» у правого края:
+// теперь компактный блок в верхней панели. В одной строке —
+// подпись «Модель», название модели, число пройденных этапов
+// (например, 1/4) и словесный статус (черновик / в работе /
+// готова). По нажатию раскрывается дорожная карта с подробностями,
+// карандашом редактора и переходом в раздел «Модель».
 // ============================================================
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Circle, Pencil } from "lucide-react";
+import { Check, ChevronDown, Circle, Pencil } from "lucide-react";
 import { useModel } from "../lib/model-context";
 import { ModelEditorDialog, type EditTarget } from "./model-editor-dialog";
 import { cn } from "../lib/utils";
@@ -21,18 +23,18 @@ interface Step {
   detail: string;
 }
 
-export function ModelRail() {
+export function ModelStatus() {
   const { text, name, structure, fitResult, models, labels, assumptions, currentId } = useModel();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const railRef = useRef<HTMLElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Закрываем раскрытую панель по клику вне и по Escape
+  // Закрываем раскрытую карточку по клику вне и по Escape
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (railRef.current && !railRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -84,6 +86,15 @@ export function ModelRail() {
 
   const doneCount = steps.filter((s) => s.done).length;
   const title = name.trim() || compartments.join(" · ") || "Модель не названа";
+  // Словесный статус для шапки: черновик → в работе → готова
+  const statusWord =
+    doneCount === steps.length ? "готова" : doneCount === 0 ? "черновик" : "в работе";
+  const statusTone =
+    doneCount === steps.length
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+      : doneCount === 0
+        ? "border-slate-700 bg-ink-800 text-slate-400"
+        : "border-amber-500/40 bg-amber-500/10 text-amber-300";
 
   // Что правим в редакторе: запись из базы (если текущая модель сохранена)
   // либо текущий черновик
@@ -101,47 +112,45 @@ export function ModelRail() {
       : { id: null, name, raw_text: text, labels, assumptions };
 
   return (
-    <aside
-      ref={railRef}
-      className="app-rail relative flex w-11 shrink-0 self-start flex-col items-center rounded-bl-xl border-b border-l border-slate-800/70 bg-ink-900/40"
-    >
-      {/* Вкладка-кнопка «Модель»: вертикальная подпись и индикатор
-          этапов. Нажатие раскрывает подробный статус работы */}
+    <div ref={rootRef} className="relative min-w-0">
+      {/* Компактный статус: «Модель» + название + этапы + статус */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={`${title} — статус ${doneCount} из ${steps.length} этапов`}
-        className="flex w-full flex-col items-center gap-2.5 px-1 py-3 transition-colors hover:bg-slate-800/50"
+        title={`${title} — ${statusWord}, ${doneCount} из ${steps.length} этапов`}
+        className="flex min-w-0 max-w-[420px] items-center gap-2.5 rounded-xl border border-slate-800/80 bg-ink-800/40 px-3 py-1.5 text-left transition-colors hover:border-slate-700 hover:bg-ink-800/70"
       >
-        {/* Вертикальная подпись «Модель». Каждая буква — отдельной
-            строкой с плотным интерлиньяжем: при writing-mode шаг между
-            буквами берётся из вертикальных метрик шрифта и получается
-            слишком большим */}
-        <span className="flex flex-col items-center text-[13px] font-bold text-slate-300">
-          {"Модель".split("").map((ch, i) => (
-            <span key={i} className="leading-[0.95]">
-              {ch}
-            </span>
-          ))}
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+          Модель
         </span>
-
-        {/* Индикатор этапов: закрашенная точка — этап пройден */}
-        <span className="flex flex-col items-center gap-1.5">
-          {steps.map((s) => (
-            <span
-              key={s.id}
-              title={s.title}
-              className={cn("size-2 rounded-full", s.done ? "bg-emerald-400" : "bg-slate-700")}
-            />
-          ))}
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-100">{title}</span>
+        <span
+          className="shrink-0 font-mono text-[11px] tabular-nums text-slate-400"
+          title={`Пройдено этапов: ${doneCount} из ${steps.length}`}
+        >
+          {doneCount}/{steps.length}
         </span>
+        <span
+          className={cn(
+            "shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+            statusTone,
+          )}
+        >
+          {statusWord}
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-3.5 shrink-0 text-slate-500 transition-transform",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
-      {/* Раскрытая панель: подробный статус по этапам (влево от полосы) */}
+      {/* Раскрытая карточка: подробный статус по этапам */}
       {open && (
-        <div className="surface-float absolute right-full top-0 z-50 mr-2 w-[340px] rounded-xl border border-slate-700 bg-ink-900 p-3">
+        <div className="surface-float absolute left-1/2 top-full z-50 mt-2 w-[340px] max-w-[calc(100vw-16px)] -translate-x-1/2 rounded-xl border border-slate-700 bg-ink-900 p-3">
           <div className="mb-3 flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -212,6 +221,6 @@ export function ModelRail() {
 
       {/* Окно редактора модели: уравнение и названия терминов (рус./англ.) */}
       <ModelEditorDialog target={editTarget} onClose={() => setEditorOpen(false)} />
-    </aside>
+    </div>
   );
 }

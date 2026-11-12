@@ -48,7 +48,7 @@ export function SensitivityPage() {
 
   return (
     // Ниже xl блоки идут друг за другом, выше — две колонки во всю высоту окна
-    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-4 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(320px,400px)_1fr] xl:overflow-hidden">
+    <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-5 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(320px,400px)_1fr] xl:overflow-hidden">
       {/* Левая колонка — контекст модели и настройка анализа */}
       <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
         {/* Статус раздела */}
