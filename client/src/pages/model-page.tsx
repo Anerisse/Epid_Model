@@ -72,7 +72,7 @@ export function ModelPage() {
       {/* Левая колонка: редактор ОДУ (закреплён сверху) + список сохранённых
       моделей (скроллится внутри карточки). На широком экране колонка
       занимает всю высоту, на узком — прокручивается вместе со страницей. */}
-      <div className="flex min-h-0 flex-col gap-4 pr-1 xl:overflow-y-auto">
+      <div className="flex min-h-0 flex-col gap-4 xl:overflow-y-auto">
         <Card className="shrink-0">
           <CardHeader className="pb-2">
             <CardTitle>Система ОДУ</CardTitle>
@@ -215,7 +215,7 @@ export function ModelPage() {
       с окном, но структуре всегда остаётся ~500 px; обе карточки
       растягиваются на высоту строки (у допущений `h-full`), поэтому
       их нижние края совпадают при любой длине структуры */}
-      <div className="grid min-h-0 auto-rows-min content-start grid-cols-1 gap-3 pr-1 xl:overflow-y-auto min-[1390px]:auto-rows-auto min-[1390px]:content-normal min-[1390px]:grid-cols-[minmax(0,1fr)_clamp(300px,max(21vw,calc(100%_-_512px)),580px)] min-[1390px]:grid-rows-[auto_minmax(0,1fr)]">
+      <div className="grid min-h-0 auto-rows-min content-start grid-cols-1 gap-4 pr-1 xl:overflow-y-auto min-[1390px]:auto-rows-auto min-[1390px]:content-normal min-[1390px]:grid-cols-[minmax(0,1fr)_clamp(300px,max(21vw,calc(100%_-_512px)),580px)] min-[1390px]:grid-rows-[auto_minmax(0,1fr)]">
         {/* Структура модели — компактная справка: компартменты, параметры
         и потоки; на широкой карточке подпись группы встаёт отдельной
         строкой над значениями (см. `@min-[460px]:w-full` ниже) */}

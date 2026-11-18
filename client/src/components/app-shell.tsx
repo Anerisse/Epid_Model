@@ -1,9 +1,9 @@
 // components/app-shell.tsx — каркас приложения: верхняя панель
 // «Simula» на всю ширину, слева — вкладки разделов (сворачиваются
-// «язычком» на кромке панели), справа — контент раздела. Статус
-// модели живёт в шапке: название, число пройденных этапов и статус.
-// Контент занимает оставшуюся высоту (100dvh): страницы скроллятся
-// внутри своих панелей, а не всей страницей (как в legacy).
+// до иконок; кнопка сворачивания внутри панели, справа от заголовка),
+// справа — контент раздела. Статус модели живёт в шапке: название,
+// число пройденных этапов и статус. Контент занимает оставшуюся
+// высоту (100dvh): страницы скроллятся внутри своих панелей.
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
@@ -47,7 +47,7 @@ export function AppShell() {
   const { theme, toggleTheme } = useTheme();
   // Заглушка авторизации: кнопка входа/регистрации без реального аккаунта
   const [authNotice, setAuthNotice] = useState(false);
-  // Левая панель разделов: скрывается кнопкой в шапке
+  // Левая панель разделов: сворачивается до иконок кнопкой внутри панели
   const [navOpen, setNavOpen] = useState(true);
 
   useEffect(() => {
@@ -114,73 +114,78 @@ export function AppShell() {
       )}
 
       {/* Левая навигация (вкладки разделов) + контент */}
-      <div className="relative flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1">
         <aside
           id="app-sidebar"
-          aria-hidden={!navOpen}
-          inert={!navOpen}
           className={cn(
             "app-sidebar shrink-0 overflow-hidden border-r border-slate-800/70 bg-ink-900/40 transition-[width] duration-200",
-            navOpen ? "w-64" : "w-0 border-r-0",
+            navOpen ? "w-64" : "w-14",
           )}
         >
-          <div className="flex h-full w-64 flex-col">
-            <div className="px-4 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
-              Этапы работы с моделью
+          <div className="flex h-full w-full flex-col">
+            <div
+              className={cn(
+                "flex items-center pb-2 pt-3",
+                navOpen ? "justify-between gap-2 pl-4 pr-2" : "justify-center px-1",
+              )}
+            >
+              {navOpen && (
+                <div className="min-w-0 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                  Этапы работы с моделью
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setNavOpen((v) => !v)}
+                title={navOpen ? "Скрыть панель разделов" : "Показать панель разделов"}
+                aria-label={navOpen ? "Скрыть панель разделов" : "Показать панель разделов"}
+                aria-expanded={navOpen}
+                aria-controls="app-sidebar"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-100"
+              >
+                {navOpen ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+              </button>
             </div>
-            <nav className="flex-1 space-y-1 overflow-y-auto px-2 pb-3">
+
+            <nav className="flex-1 space-y-1 overflow-x-hidden overflow-y-auto px-2 pb-3">
               {NAV_ITEMS.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   end={item.to === "/"}
-                  title={item.description}
+                  title={navOpen ? item.description : `${item.label} — ${item.description}`}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-start gap-2.5 rounded-lg px-3 py-2.5 transition-colors",
+                      "flex rounded-lg py-2.5 transition-colors",
+                      navOpen ? "items-start gap-2.5 px-3" : "items-center justify-center px-0",
                       isActive
                         ? "nav-item-active"
                         : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200",
                     )
                   }
                 >
-                  <item.icon className="mt-0.5 size-4 shrink-0" />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold leading-tight">{item.label}</span>
-                    <span className="block truncate text-[11px] leading-tight text-slate-500">
-                      {item.description}
+                  <item.icon className={cn("size-4 shrink-0", navOpen && "mt-0.5")} />
+                  {navOpen && (
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-tight">{item.label}</span>
+                      <span className="block truncate text-[11px] leading-tight text-slate-500">
+                        {item.description}
+                      </span>
                     </span>
-                  </span>
+                  )}
                 </NavLink>
               ))}
             </nav>
 
-            <div className="border-t border-slate-800 px-4 py-3">
-              <p className="text-[11px] leading-relaxed text-slate-500">
-                Все вычисления выполняются сервером (Next.js + SQLite). Клиент — React + Tailwind.
-              </p>
-            </div>
+            {navOpen && (
+              <div className="border-t border-slate-800 px-4 py-3">
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Все вычисления выполняются сервером (Next.js + SQLite). Клиент — React + Tailwind.
+                </p>
+              </div>
+            )}
           </div>
         </aside>
-
-        {/* «Язычок» панели: узкая вертикальная вкладка на её кромке.
-            Открытая панель — сразу за правым краем (256 px), скрытая —
-            у левого края экрана. Полукруглый правый край делает его
-            похожим на ручку-закладку, а не на обрезанный прямоугольник. */}
-        <button
-          type="button"
-          onClick={() => setNavOpen((v) => !v)}
-          title={navOpen ? "Скрыть панель разделов" : "Показать панель разделов"}
-          aria-label={navOpen ? "Скрыть панель разделов" : "Показать панель разделов"}
-          aria-expanded={navOpen}
-          aria-controls="app-sidebar"
-          className={cn(
-            "absolute top-4 z-20 flex h-16 w-4 items-center justify-center rounded-r-full border border-l-0 border-slate-700/80 bg-ink-900/90 text-slate-500 shadow-sm transition-[left,color] duration-200 hover:bg-ink-800 hover:text-slate-100",
-            navOpen ? "left-64" : "left-0",
-          )}
-        >
-          {navOpen ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-        </button>
 
         {/* Контент раздела: занимает оставшуюся высоту, страница сама
             раскладывается на панели и скроллится внутри них */}
