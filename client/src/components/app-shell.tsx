@@ -4,16 +4,18 @@
 // справа — контент раздела. Статус модели живёт в шапке: название,
 // число пройденных этапов и статус. Контент занимает оставшуюся
 // высоту (100dvh): страницы скроллятся внутри своих панелей.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   Activity,
   BookOpenText,
+  Check,
   ChevronLeft,
   ChevronRight,
   Gauge,
   LogIn,
   Moon,
+  Settings,
   ShieldCheck,
   SlidersHorizontal,
   Sun,
@@ -22,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../lib/utils";
+import { FONT_OPTIONS, useFont } from "../lib/font";
 import { useTheme } from "../lib/theme";
 import { ModelStatus } from "./model-status";
 import { Button } from "./ui/button";
@@ -45,16 +48,39 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppShell() {
   const { theme, toggleTheme } = useTheme();
+  const { fontId, setFontId } = useFont();
   // Заглушка авторизации: кнопка входа/регистрации без реального аккаунта
   const [authNotice, setAuthNotice] = useState(false);
   // Левая панель разделов: сворачивается до иконок кнопкой внутри панели
   const [navOpen, setNavOpen] = useState(true);
+  // Настройки (выбор шрифта интерфейса)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!authNotice) return;
     const timer = window.setTimeout(() => setAuthNotice(false), 2600);
     return () => window.clearTimeout(timer);
   }, [authNotice]);
+
+  // Закрываем настройки по клику вне и по Escape
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSettingsOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [settingsOpen]);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-ink-950 text-slate-200">
@@ -118,7 +144,7 @@ export function AppShell() {
         <aside
           id="app-sidebar"
           className={cn(
-            "app-sidebar shrink-0 overflow-hidden border-r border-slate-800/70 bg-ink-900/40 transition-[width] duration-200",
+            "app-sidebar shrink-0 border-r border-slate-800/70 bg-ink-900/40 transition-[width] duration-200",
             navOpen ? "w-64" : "w-14",
           )}
         >
@@ -177,13 +203,60 @@ export function AppShell() {
               ))}
             </nav>
 
-            {navOpen && (
-              <div className="border-t border-slate-800 px-4 py-3">
-                <p className="text-[11px] leading-relaxed text-slate-500">
-                  Все вычисления выполняются сервером (Next.js + SQLite). Клиент — React + Tailwind.
-                </p>
-              </div>
-            )}
+            <div
+              ref={settingsRef}
+              className={cn("relative border-t border-slate-800", navOpen ? "px-2 py-2" : "px-1 py-2")}
+            >
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((v) => !v)}
+                title="Настройки"
+                aria-label="Настройки"
+                aria-expanded={settingsOpen}
+                className={cn(
+                  "flex w-full items-center rounded-lg py-2 text-sm font-semibold text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-slate-200",
+                  navOpen ? "gap-2.5 px-3" : "justify-center px-0",
+                )}
+              >
+                <Settings className="size-4 shrink-0" />
+                {navOpen && <span>Настройки</span>}
+              </button>
+
+              {settingsOpen && (
+                <div
+                  className={cn(
+                    "surface-float absolute bottom-full z-50 mb-2 rounded-xl border border-slate-700 bg-ink-900 p-3",
+                    navOpen ? "left-2 right-2" : "left-full ml-2 w-72",
+                  )}
+                >
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Шрифт интерфейса
+                  </p>
+                  <div className="space-y-1">
+                    {FONT_OPTIONS.map((opt) => {
+                      const active = fontId === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setFontId(opt.id)}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                            active
+                              ? "bg-emerald-500/10 text-emerald-300"
+                              : "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100",
+                          )}
+                          style={{ fontFamily: opt.sans }}
+                        >
+                          <span>{opt.label}</span>
+                          {active && <Check className="size-4 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </aside>
 

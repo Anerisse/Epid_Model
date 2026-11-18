@@ -86,10 +86,10 @@ describe("позиции блоков на холсте", () => {
 
 describe("цвета блоков", () => {
   it("известные компартменты имеют тематический цвет", () => {
-    expect(compartmentColor("S", 0)).toBe("#10b981");
-    expect(compartmentColor("I", 1)).toBe("#f43f5e");
-    expect(compartmentColor("R", 2)).toBe("#0ea5e9");
-    expect(compartmentColor("E", 1)).toBe("#f59e0b");
+    expect(compartmentColor("S", 0)).toBe("#059669");
+    expect(compartmentColor("I", 1)).toBe("#e11d48");
+    expect(compartmentColor("R", 2)).toBe("#0284c7");
+    expect(compartmentColor("E", 1)).toBe("#b45309");
   });
 
   it("неизвестный компартмент получает цвет из палитры по индексу", () => {

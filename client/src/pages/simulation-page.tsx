@@ -12,7 +12,8 @@ import { SimulationChart } from "../components/simulation-chart";
 import { AnalysisPanel } from "../components/analysis-panel";
 import { SliderRow } from "../components/ui/slider-row";
 import { Input } from "../components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Hint } from "../components/ui/hint";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
 
 const DEFAULT_POPULATION = 10000;
@@ -129,14 +130,14 @@ export function SimulationPage() {
     // выше — две колонки во всю высоту окна
     <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-5 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(360px,430px)_1fr] xl:overflow-hidden">
       {/* Левая колонка: качественный анализ сверху, параметры ниже */}
-      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
+      <div className="min-h-0 space-y-4 xl:overflow-y-auto">
         {/* Качественный анализ — вверху, над параметрами */}
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle>Качественный анализ</CardTitle>
-            <CardDescription>
-              R₀ методом следующего поколения (NGM) или ручной формулой.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              Качественный анализ
+              <Hint text="R₀ вычисляется методом следующего поколения (NGM); при необходимости можно задать ручную формулу." />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <AnalysisPanel
@@ -148,14 +149,11 @@ export function SimulationPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
               <Activity className="size-4 text-emerald-300" /> Параметры
+              <Hint text="Численное интегрирование РК4 (шаг 0.05 дн). Любое изменение ползунка пересчитывает графики на сервере." />
             </CardTitle>
-            <CardDescription>
-              Численное интегрирование РК4 (шаг 0.05 дн). Любое движение ползунка мгновенно
-              пересчитывает графики на сервере.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {canSimulate ? (
@@ -258,16 +256,16 @@ export function SimulationPage() {
 
       {/* Правая колонка — графики и анализ. График заполняет свободное
           место (flex-1), внизу статичная строка «Статистика + Анализ» */}
-      <div className="flex min-h-0 flex-col gap-4 pr-1 xl:overflow-hidden">
+      <div className="flex min-h-0 flex-col gap-4 xl:overflow-hidden">
         <Card className="flex min-h-[300px] flex-1 flex-col">
           <CardHeader className="pb-1">
             <CardTitle className="flex items-center gap-2">
               Кривые эпидемии
               {pending && <Loader2 className="size-4 animate-spin text-emerald-300" />}
             </CardTitle>
-            <CardDescription>
+            <p className="text-xs text-slate-500">
               {result ? `${result.stats.steps} шагов РК4` : "Симуляция ещё не выполнена."}
-            </CardDescription>
+            </p>
           </CardHeader>
           <CardContent className="min-h-0 flex-1">
             {error ? (

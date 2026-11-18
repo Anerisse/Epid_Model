@@ -67,7 +67,7 @@ export function SimulationChart({ time, series, names, colors }: SimulationChart
   return (
     <div className="h-full min-h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
+        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 12 }}>
           <CartesianGrid stroke={palette.grid} strokeDasharray="3 3" />
           <XAxis
             dataKey="t"
@@ -79,10 +79,10 @@ export function SimulationChart({ time, series, names, colors }: SimulationChart
           <YAxis
             stroke={palette.axis}
             fontSize={11}
-            width={62}
+            width={80}
             tickFormatter={formatAxisValue}
             tickLine={false}
-            label={{ value: "людей", angle: -90, position: "insideLeft", offset: 18, fill: palette.axis, fontSize: 11 }}
+            label={{ value: "людей", angle: -90, position: "insideLeft", offset: 12, fill: palette.axis, fontSize: 11 }}
           />
           <Tooltip
             contentStyle={{
@@ -100,7 +100,7 @@ export function SimulationChart({ time, series, names, colors }: SimulationChart
               type="monotone"
               dataKey={name}
               stroke={colors[i]}
-              strokeWidth={2}
+              strokeWidth={2.5}
               dot={false}
               isAnimationActive={false}
             />

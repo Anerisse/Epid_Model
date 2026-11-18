@@ -5,20 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Simula — моделирование эпидемий</title>
     <script>
-      // Применяем сохранённую тему до первой отрисовки (без «мигания»)
+      // Применяем сохранённые тему и шрифт до первой отрисовки (без «мигания»)
       try {
         var saved = localStorage.getItem("simula-theme");
         var light = saved === "light" || (!saved && matchMedia("(prefers-color-scheme: light)").matches);
         document.documentElement.classList.toggle("light", light);
         document.documentElement.style.colorScheme = light ? "light" : "dark";
+
+        var fontId = localStorage.getItem("simula-font");
+        var fonts = {
+          manrope: { sans: '"Manrope", ui-sans-serif, system-ui, sans-serif', display: '"Space Grotesk", ui-sans-serif, sans-serif' },
+          "medeo-sans": { sans: '"Medeo Sans", "Manrope", ui-sans-serif, system-ui, sans-serif', display: '"Medeo Sans", "Space Grotesk", ui-sans-serif, sans-serif' },
+          inter: { sans: '"Inter", ui-sans-serif, system-ui, sans-serif', display: '"Inter", ui-sans-serif, system-ui, sans-serif' },
+          "noto-sans": { sans: '"Noto Sans", ui-sans-serif, system-ui, sans-serif', display: '"Noto Sans", ui-sans-serif, system-ui, sans-serif' },
+          "ibm-plex-sans": { sans: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif', display: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif' },
+          onest: { sans: '"Onest", ui-sans-serif, system-ui, sans-serif', display: '"Onest", ui-sans-serif, system-ui, sans-serif' }
+        };
+        var f = fonts[fontId] || fonts.manrope;
+        document.documentElement.style.setProperty("--font-sans", f.sans);
+        document.documentElement.style.setProperty("--font-display", f.display);
       } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/medeo-font@1.1.0/dist/sans.css" />
   </head>
   <body>
     <div id="root"></div>

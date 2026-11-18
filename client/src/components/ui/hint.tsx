@@ -75,7 +75,7 @@ export function Hint({ text, className }: HintProps) {
         createPortal(
           <div
             role="tooltip"
-            className="pointer-events-none fixed z-[60] w-72 max-w-[calc(100vw-16px)] whitespace-pre-line rounded-lg border border-slate-700 bg-ink-900/95 px-3 py-2 text-[11px] leading-snug text-slate-200 shadow-xl backdrop-blur"
+            className="pointer-events-none fixed z-[60] w-72 max-w-[calc(100vw-16px)] whitespace-pre-line rounded-lg border border-slate-700 bg-ink-900/95 px-3 py-2 text-xs leading-snug text-slate-200 shadow-xl backdrop-blur"
             style={{
               top: pos.top,
               left: pos.left,

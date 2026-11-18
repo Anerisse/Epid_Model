@@ -11,8 +11,9 @@ import { useModel } from "../lib/model-context";
 import { FitChart } from "../components/fit-chart";
 import { SliderRow } from "../components/ui/slider-row";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
+import { Hint } from "../components/ui/hint";
 import { Label } from "../components/ui/label";
 import { Select } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
@@ -195,14 +196,14 @@ export function ParametrizationPage() {
     // выше — две колонки во всю высоту окна
     <div className="grid h-full min-h-0 auto-rows-min content-start grid-cols-1 gap-4 overflow-y-auto p-5 xl:auto-rows-auto xl:content-normal xl:grid-cols-[minmax(340px,420px)_1fr] xl:overflow-hidden">
       {/* Левая колонка — метод, данные, параметры */}
-      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
+      <div className="min-h-0 space-y-4 xl:overflow-y-auto">
         {/* Метод оценивания: базовый МНК + план других методов */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Метод оценивания</CardTitle>
-            <CardDescription>
-              База — МНК (Нелдер–Мид). Список показывает, какие методы планируется добавить в раздел.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              Метод оценивания
+              <Hint text="Базовый метод — МНК (Нелдер–Мид). Список показывает методы, которые планируется добавить в раздел." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-center gap-2">
@@ -236,10 +237,10 @@ export function ParametrizationPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Наблюдения I(t)</CardTitle>
-            <CardDescription>
-              По строкам «день число» (первые наблюдения задают I(0)). Пробел или запятая — разделители.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              Наблюдения I(t)
+              <Hint text="По строкам «день число» (первые наблюдения задают I(0)). Разделители — пробел или запятая." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Textarea
@@ -248,13 +249,13 @@ export function ParametrizationPage() {
               value={dataText}
               onChange={(e) => setDataText(e.target.value)}
             />
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={runFit} disabled={!canRun || busy}>
+            <div className="flex gap-2">
+              <Button className="flex-1 whitespace-nowrap" onClick={runFit} disabled={!canRun || busy}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <SlidersHorizontal className="size-4" />}
                 Оценить параметры
               </Button>
-              <Button variant="amber" onClick={handleExample} disabled={!text.trim() || busy}>
-                <FlaskConical className="size-4" /> Пример (синтетика)
+              <Button className="flex-1 whitespace-nowrap" variant="amber" onClick={handleExample} disabled={!text.trim() || busy}>
+                <FlaskConical className="size-4" /> Пример
               </Button>
             </div>
             {trueParams && (
@@ -271,12 +272,11 @@ export function ParametrizationPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Параметры</CardTitle>
-            <CardDescription>
-              Отметьте оцениваемые (МНК подберёт их по данным); фиксированные задаются
-              ползунками. Население N — всегда фиксировано.
-            </CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              Параметры
+              <Hint text="Отметьте оцениваемые — МНК подберёт их по данным. Фиксированные задаются ползунками; население N всегда фиксировано." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {structure && evaluable.length > 0 ? (
@@ -347,13 +347,13 @@ export function ParametrizationPage() {
       </div>
 
       {/* Правая колонка — результат */}
-      <div className="min-h-0 space-y-4 pr-1 xl:overflow-y-auto">
+      <div className="min-h-0 space-y-4 xl:overflow-y-auto">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Результат подгонки</CardTitle>
-            <CardDescription>
-              Жёлтые точки — наблюдения, красная кривая — модель с подобранными параметрами.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              Результат подгонки
+              <Hint text="Зелёные точки — наблюдения, красная кривая — модель с подобранными параметрами." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {result ? (

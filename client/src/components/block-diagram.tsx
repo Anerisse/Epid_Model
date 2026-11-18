@@ -216,12 +216,12 @@ function InfectionEdge({ fromName, toName, boxes }: { fromName: string; toName: 
     <g>
       <path
         d={`M ${startX} ${startY} Q ${(startX + endX) / 2} ${ctrlY} ${endX} ${endY}`}
-        stroke="#fbbf24"
+        stroke="#d97706"
         strokeWidth={1.6}
         strokeDasharray="6 5"
         fill="none"
       />
-      <circle cx={endX} cy={endY} r={3} fill="#fbbf24" />
+      <circle cx={endX} cy={endY} r={3} fill="#d97706" />
     </g>
   );
 }

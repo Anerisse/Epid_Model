@@ -6,9 +6,9 @@
 import { useMemo } from "react";
 import {
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Scatter,
   Tooltip,
@@ -51,10 +51,12 @@ export function FitChart({ time, model, points }: FitChartProps) {
   return (
     <div className="h-[340px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
+        <ComposedChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 12 }}>
           <CartesianGrid stroke={palette.grid} strokeDasharray="3 3" />
           <XAxis
+            type="number"
             dataKey="t"
+            domain={["dataMin", "dataMax"]}
             stroke={palette.axis}
             fontSize={11}
             tickLine={false}
@@ -63,10 +65,10 @@ export function FitChart({ time, model, points }: FitChartProps) {
           <YAxis
             stroke={palette.axis}
             fontSize={11}
-            width={62}
+            width={80}
             tickFormatter={formatAxisValue}
             tickLine={false}
-            label={{ value: "инфицированные", angle: -90, position: "insideLeft", offset: 20, fill: palette.axis, fontSize: 11 }}
+            label={{ value: "инфицированные", angle: -90, position: "insideLeft", offset: 12, fill: palette.axis, fontSize: 11 }}
           />
           <Tooltip
             contentStyle={{
@@ -78,9 +80,9 @@ export function FitChart({ time, model, points }: FitChartProps) {
             labelFormatter={(v) => `t = ${v} дн.`}
           />
           <Legend wrapperStyle={{ fontSize: 12, color: palette.axis }} />
-          <Line type="monotone" dataKey="I" name="Модель" stroke="#f43f5e" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Scatter data={points} dataKey="value" name="Наблюдения" fill="#fbbf24" shape="circle" />
-        </LineChart>
+          <Line type="monotone" dataKey="I" name="Модель" stroke="#e11d48" strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Scatter name="Наблюдения" data={points} dataKey="value" fill="#059669" />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

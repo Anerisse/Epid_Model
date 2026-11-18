@@ -13,7 +13,7 @@ import { ModelAssumptions } from "../components/model-assumptions";
 import { ModelEditorDialog, type EditTarget } from "../components/model-editor-dialog";
 import { OnScreenKeyboard } from "../components/on-screen-keyboard";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Hint } from "../components/ui/hint";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -75,10 +75,10 @@ export function ModelPage() {
       <div className="flex min-h-0 flex-col gap-4 xl:overflow-y-auto">
         <Card className="shrink-0">
           <CardHeader className="pb-2">
-            <CardTitle>Система ОДУ</CardTitle>
-            <CardDescription>
-              dX/dt = … или X' = …; греческие буквы и алиасы (beta → β) распознаются автоматически.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              Система ОДУ
+              <Hint text="Поддерживаются формы dX/dt = … и X' = …; греческие буквы и алиасы (beta → β) распознаются автоматически." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-2">
@@ -105,7 +105,7 @@ export function ModelPage() {
               onChange={(e) => setText(e.target.value)}
             />
             {/* Кнопка виртуальной клавиатуры (как в legacy) */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center">
               <Button
                 variant="secondary"
                 size="sm"
@@ -115,9 +115,6 @@ export function ModelPage() {
               >
                 <KeyboardIcon className="size-4" /> Виртуальная клавиатура
               </Button>
-              <span className="hidden text-[10px] text-slate-500 sm:block">
-                греческие буквы, компартменты, dX/dt
-              </span>
             </div>
             {notice && (
               <p className="text-xs text-emerald-300">
@@ -135,10 +132,10 @@ export function ModelPage() {
 
         <Card className="flex flex-col xl:min-h-[140px] xl:flex-1 xl:overflow-hidden">
           <CardHeader className="shrink-0 pb-2">
-            <CardTitle>Сохранённые модели</CardTitle>
-            <CardDescription>
-              Нажмите на название — загрузить модель в редактор (открытая выделена). Карандаш — редактировать названия и уравнение.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              Сохранённые модели
+              <Hint text="Список сохранённых в базе моделей. Нажмите на название, чтобы загрузить модель в редактор; карандаш — изменить уравнение и названия; корзина — удалить." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
             {loading ? (
@@ -248,7 +245,7 @@ export function ModelPage() {
                       />
                       {c.name}
                       {labels[c.name]?.ru && (
-                        <span className="font-sans text-[10px] font-normal text-slate-400">
+                        <span className="font-sans text-[11px] font-normal text-slate-300">
                           {labels[c.name]!.ru}
                         </span>
                       )}
@@ -264,15 +261,15 @@ export function ModelPage() {
                   {structure.parameters.map((p) => (
                     <span
                       key={p}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-mono text-slate-300"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-mono text-slate-300 [.light_&]:bg-slate-900"
                       title={labels[p]?.ru || labels[p]?.en || undefined}
                     >
-                      {p}
+                      <span className="font-semibold">{p}</span>
                       {labels[p]?.ru && (
-                        <span className="font-sans text-[10px] text-slate-400">{labels[p]!.ru}</span>
+                        <span className="font-sans text-[11px] text-slate-300">{labels[p]!.ru}</span>
                       )}
                       {presets?.[p]?.unit && (
-                        <span className="font-sans text-[9px] text-slate-500">{presets[p]!.unit}</span>
+                        <span className="font-sans text-[10px] text-slate-400">{presets[p]!.unit}</span>
                       )}
                     </span>
                   ))}
